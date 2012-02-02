@@ -1,0 +1,840 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<!-- saved from url=(0045)http://norwellrobotics.com/papers/canbus.html -->
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
+<title>CAN Bus Control for the 2011 FRC Control System</title>
+
+<meta name="generator" content="Org-mode">
+<meta name="generated" content="2011-01-20 Thu">
+<meta name="author" content="Alex Henning">
+<meta name="description" content="">
+<meta name="keywords" content="">
+<style type="text/css">
+ <!--/*--><![CDATA[/*><!--*/
+  html { font-family: Times, serif; font-size: 12pt; }
+  .title  { text-align: center; }
+  .todo   { color: red; }
+  .done   { color: green; }
+  .tag    { background-color: #add8e6; font-weight:normal }
+  .target { }
+  .timestamp { color: #bebebe; }
+  .timestamp-kwd { color: #5f9ea0; }
+  p.verse { margin-left: 3% }
+  pre {
+	border: 1pt solid #AEBDCC;
+	background-color: #F3F5F7;
+	padding: 5pt;
+	font-family: courier, monospace;
+        font-size: 90%;
+        overflow:auto;
+  }
+  table { border-collapse: collapse; }
+  td, th { vertical-align: top; }
+  dt { font-weight: bold; }
+  div.figure { padding: 0.5em; }
+  div.figure p { text-align: center; }
+  textarea { overflow-x: auto; }
+  .linenr { font-size:smaller }
+  .code-highlighted {background-color:#ffff00;}
+  .org-info-js_info-navigation { border-style:none; }
+  #org-info-js_console-label { font-size:10px; font-weight:bold;
+                               white-space:nowrap; }
+  .org-info-js_search-highlight {background-color:#ffff00; color:#000000;
+                                 font-weight:bold; }
+  /*]]>*/-->
+</style>
+<script type="text/javascript">
+<!--/*--><![CDATA[/*><!--*/
+ function CodeHighlightOn(elem, id)
+ {
+   var target = document.getElementById(id);
+   if(null != target) {
+     elem.cacheClassElem = elem.className;
+     elem.cacheClassTarget = target.className;
+     target.className = "code-highlighted";
+     elem.className   = "code-highlighted";
+   }
+ }
+ function CodeHighlightOff(elem, id)
+ {
+   var target = document.getElementById(id);
+   if(elem.cacheClassElem)
+     elem.className = elem.cacheClassElem;
+   if(elem.cacheClassTarget)
+     target.className = elem.cacheClassTarget;
+ }
+/*]]>*///-->
+</script>
+
+</head>
+<body>
+<div id="content">
+
+<h1 class="title">CAN Bus Control for the 2011 FRC Control System</h1>
+
+
+
+<div id="table-of-contents">
+<h2>Table of Contents</h2>
+<div id="text-table-of-contents">
+<ul>
+<li><a href="http://norwellrobotics.com/papers/canbus.html#sec-1">1 Introduction </a></li>
+<li><a href="http://norwellrobotics.com/papers/canbus.html#sec-2">2 An overview of CAN-bus </a></li>
+<li><a href="http://norwellrobotics.com/papers/canbus.html#sec-3">3 Making the Serial to CAN-bus converter </a></li>
+<li><a href="http://norwellrobotics.com/papers/canbus.html#sec-4">4 Making the CAN-bus terminator </a></li>
+<li><a href="http://norwellrobotics.com/papers/canbus.html#sec-5">5 Setting up the Jaguars </a>
+<ul>
+<li><a href="http://norwellrobotics.com/papers/canbus.html#sec-5_1">5.1 Getting the latest images and BDC-COMM </a></li>
+<li><a href="http://norwellrobotics.com/papers/canbus.html#sec-5_2">5.2 Black Jaguars </a></li>
+<li><a href="http://norwellrobotics.com/papers/canbus.html#sec-5_3">5.3 Grey Jaguars </a></li>
+</ul>
+</li>
+<li><a href="http://norwellrobotics.com/papers/canbus.html#sec-6">6 Imaging the CRIO </a></li>
+<li><a href="http://norwellrobotics.com/papers/canbus.html#sec-7">7 Putting it All Together </a></li>
+<li><a href="http://norwellrobotics.com/papers/canbus.html#sec-8">8 Example: Simple Driving </a></li>
+<li><a href="http://norwellrobotics.com/papers/canbus.html#sec-9">9 CAN-bus Features Examples [0/4] </a>
+<ul>
+<li><a href="http://norwellrobotics.com/papers/canbus.html#sec-9_1">9.1 Example of current for traction control </a></li>
+<li><a href="http://norwellrobotics.com/papers/canbus.html#sec-9_2">9.2 Example of encoders </a></li>
+<li><a href="http://norwellrobotics.com/papers/canbus.html#sec-9_3">9.3 Example of limit switches </a></li>
+<li><a href="http://norwellrobotics.com/papers/canbus.html#sec-9_4">9.4 Example of breaks </a></li>
+</ul>
+</li>
+<li><a href="http://norwellrobotics.com/papers/canbus.html#sec-10">10 Conclusion </a></li>
+</ul>
+</div>
+</div>
+
+<div id="outline-container-1" class="outline-2">
+<h2 id="sec-1"><span class="section-number-2">1</span> Introduction </h2>
+<div class="outline-text-2" id="text-1">
+
+<p>This year team 348 decided to use CAN-bus controllers with the Jaguars both to make wiring the robot simpler and to take advantage of some of the more advanced features CAN-bus with Jaguars offer. While setting up CAN-bus, we found that there was no single easy instructions of getting a basic setup working. The purpose of this document is to act as a reference to anyone (mostly myself) interested in using CAN-bus with the FRC 2011 control system using the black jaguars serial to can capability.
+</p>
+</div>
+
+</div>
+
+<div id="outline-container-2" class="outline-2">
+<h2 id="sec-2"><span class="section-number-2">2</span> An overview of CAN-bus </h2>
+<div class="outline-text-2" id="text-2">
+
+<p><b>What is CAN-bus?</b> CAN-bus stands for <code>controller area network</code> and is a bus protocol designed to allow devices such as micro-controllers to communicate with each other (usually without a host). It was originally developed for automotive applications. (See <a href="http://en.wikipedia.org/wiki/Controller_area_network">wikipedia</a> if you want more background) Within the application of FIRST Robotics the only devices you'll be communicating with are jaguars, unless you want to do custom circuits, but that's beyond the scope of this document. In FIRST, the CRIO will act as a host device and it releases a heartbeat pulse (which is not part of normal CAN) if the CRIO fails to send out the pulse after a certain amount of time, the jaguars will stop the motors.
+</p>
+<p>
+Each CAN-bus capable device has an ID. This ID is how you reference the device when accessing data from it and sending commands to it. Each device passes messages along the chain of CAN devices and handles messages sent to it's ID. This allows you to daisy-chain CAN devices as opposed to having to run a wire from each device to a central control board. This makes wiring significantly easier and less messy. However it does introduce a single point of failure, in our opinion, the benefits and extra data we can access (Such as voltage and current) outweigh this minor disadvantage because if one of our drive motors fails we can't drive anyways and the CAN wires seem more robust and less likely to fail.
+</p>
+<p>
+What does a CAN network consist of for FIRST robotics? On one end, you have the CRIO that sends out commands to control the jaguars. You then have a DB9 to 6P6C converter running to a black jaguar. After that you have a 6P6C cable running from one jaguar of either color to the next and so on till you get to the last jaguar. At that point you have a terminator that ends the CAN network. The rest of the document will guide you to setting up your own CAN network to control your robot.
+</p>
+<p>
+<img src="./CAN Bus Control for the 2011 FRC Control System_files/examplejag.png" alt="examplejag.png">
+</p>
+</div>
+
+</div>
+
+<div id="outline-container-3" class="outline-2">
+<h2 id="sec-3"><span class="section-number-2">3</span> Making the Serial to CAN-bus converter </h2>
+<div class="outline-text-2" id="text-3">
+
+<p>First we need to make the hardware so that we can have a functional CAN-bus system. We need a serial to CAN-bus converter. The one we made is similar to the one in the getting started manual on the <a href="http://norwellrobotics.com/papers/canbus.html#www.luminarymicro.com/jaguar">Luminary Micro site</a>, however we just soldered the 6P6C cable straight to the DB9 connector.
+</p>
+</div>
+
+<div id="outline-container-3_1" class="outline-4">
+<h4 id="sec-3_1"><span class="section-number-4">3.1</span> Materials </h4>
+<div class="outline-text-4" id="text-3_1">
+
+<ul>
+<li>
+Female DB9 connector (preferably solder-able)
+</li>
+<li>
+A case for the DB9 connector, preferably with stress reliever
+</li>
+<li>
+Some 6P6C cable
+</li>
+<li>
+100&#937; resistor
+</li>
+<li>
+Heat-shrink tubing
+</li>
+<li>
+6P6C connector
+</li>
+</ul>
+
+
+</div>
+
+</div>
+
+<div id="outline-container-3_2" class="outline-4">
+<h4 id="sec-3_2"><span class="section-number-4">3.2</span> Assembly </h4>
+<div class="outline-text-4" id="text-3_2">
+
+<ol>
+<li>
+Solder the RED and GREEN wires on opposite ends of the 100&#937; resistor and protect it with the heat-sink tubing.
+</li>
+<li>
+Solder the remaining wires (except for black) into place.
+<table border="2" cellspacing="0" cellpadding="6" rules="groups" frame="hsides">
+<caption></caption>
+<colgroup><col align="left"><col align="left"><col align="right">
+</colgroup>
+<thead>
+<tr><th scope="col">Color</th><th scope="col">DB9 Pin</th><th scope="col">6P6C Pin</th></tr>
+</thead>
+<tbody>
+<tr><td>WHITE</td><td>3</td><td>1</td></tr>
+<tr><td>BLACK</td><td>NONE</td><td>2</td></tr>
+<tr><td>RED</td><td>NONE (100&#937; resistor)</td><td>3</td></tr>
+<tr><td>GREEN</td><td>NONE (100&#937; resistor)</td><td>4</td></tr>
+<tr><td>YELLOW</td><td>5</td><td>5</td></tr>
+<tr><td>BLUE</td><td>2</td><td>6</td></tr>
+</tbody>
+</table>
+
+</li>
+<li>
+Make sure you have a 6P6C connector crimped to the other end.
+</li>
+<li>
+That's it until you can test it.
+</li>
+</ol>
+
+
+</div>
+</div>
+
+</div>
+
+<div id="outline-container-4" class="outline-2">
+<h2 id="sec-4"><span class="section-number-2">4</span> Making the CAN-bus terminator </h2>
+<div class="outline-text-2" id="text-4">
+
+<p>The terminator is similar to the one in the getting started manual on the <a href="http://norwellrobotics.com/papers/canbus.html#www.luminarymicro.com/jaguar">Luminary Micro site</a>, however we soldered the resistor to about an inch 6P6C cable that had the connector.
+</p>
+</div>
+
+<div id="outline-container-4_1" class="outline-4">
+<h4 id="sec-4_1"><span class="section-number-4">4.1</span> Materials </h4>
+<div class="outline-text-4" id="text-4_1">
+
+<ul>
+<li>
+Some 6P6C cable
+</li>
+<li>
+100&#937; resistor
+</li>
+<li>
+Heat-shrink tubing
+</li>
+<li>
+6P6C connector
+</li>
+</ul>
+
+
+</div>
+
+</div>
+
+<div id="outline-container-4_2" class="outline-4">
+<h4 id="sec-4_2"><span class="section-number-4">4.2</span> Assembly </h4>
+<div class="outline-text-4" id="text-4_2">
+
+<ol>
+<li>
+Crimp the 6P6C connector to the cable.
+</li>
+<li>
+Solder the RED and GREEN wires on opposite ends of the 100&#937; resistor and protect it with the heat-sink tubing.
+</li>
+<li>
+That's it until you can test it.
+</li>
+</ol>
+
+
+</div>
+</div>
+
+</div>
+
+<div id="outline-container-5" class="outline-2">
+<h2 id="sec-5"><span class="section-number-2">5</span> Setting up the Jaguars </h2>
+<div class="outline-text-2" id="text-5">
+
+
+</div>
+
+<div id="outline-container-5_1" class="outline-3">
+<h3 id="sec-5_1"><span class="section-number-3">5.1</span> Getting the latest images and BDC-COMM </h3>
+<div class="outline-text-3" id="text-5_1">
+
+<p>Go to the <a href="http://www.luminarymicro.com/jaguar">luminarymicro website</a> and download "BDC-COMM APPLICATION" and "MDL-BDC24 FRC2011 Firmware". BDC-COMM needs to be running on a windows machine with either a serial port or a usb to serial converter dongle. I would strongly recommend having this run on either the driver-station, programming laptop or some other computer you will have in the pits at the competition for testing purposes and assigning IDs if you somehow break a jaguar.
+</p>
+</div>
+
+</div>
+
+<div id="outline-container-5_2" class="outline-3">
+<h3 id="sec-5_2"><span class="section-number-3">5.2</span> Black Jaguars </h3>
+<div class="outline-text-3" id="text-5_2">
+
+
+</div>
+
+<div id="outline-container-5_2_1" class="outline-4">
+<h4 id="sec-5_2_1"><span class="section-number-4">5.2.1</span> Hooking it up to BDC-COMM </h4>
+<div class="outline-text-4" id="text-5_2_1">
+
+
+<p>
+<img src="./CAN Bus Control for the 2011 FRC Control System_files/blackjag.png" alt="blackjag.png">
+</p>
+<p>
+You should only have one black jaguar hooked up at a time when setting IDs and upgrading firmware.
+</p><ol>
+<li>
+Plug the 6P6C to DB9 connector into the left input port that says 10101/NET
+</li>
+<li>
+Plug the terminator you made into the other port
+</li>
+<li>
+Plug in the DB9 end of the 6P6C to DB9 connector into the computer
+</li>
+<li>
+Start up BDC-COMM go over to the system tab and it should have one board with <code>Board ID: 1</code>
+1 is the default ID for jaguars
+</li>
+</ol>
+
+
+</div>
+
+</div>
+
+<div id="outline-container-5_2_2" class="outline-4">
+<h4 id="sec-5_2_2"><span class="section-number-4">5.2.2</span> Troubleshooting </h4>
+<div class="outline-text-4" id="text-5_2_2">
+
+<p>It is not hooking up to the jaguar, hit <code>Status: Connected &gt; Disconnect</code> and then <code>Status: Disconnected &gt; Connect</code> to try reconnecting.
+</p>
+<p>
+If that doesn't work, double check that you wired the terminator DB9 to 6P6C cable properly.
+</p>
+</div>
+
+</div>
+
+<div id="outline-container-5_2_3" class="outline-4">
+<h4 id="sec-5_2_3"><span class="section-number-4">5.2.3</span> Loading the latest firmware </h4>
+<div class="outline-text-4" id="text-5_2_3">
+
+<ol>
+<li>
+Go to <code>File &gt; Update Firmware</code>
+</li>
+<li>
+Select <code>BlackJaguar92.bin</code>
+</li>
+<li>
+Click ok
+</li>
+<li>
+A progress bar should complete and the firmware version should show up as 92
+</li>
+</ol>
+
+
+</div>
+
+</div>
+
+<div id="outline-container-5_2_4" class="outline-4">
+<h4 id="sec-5_2_4"><span class="section-number-4">5.2.4</span> Setting it's ID </h4>
+<div class="outline-text-4" id="text-5_2_4">
+
+<ol>
+<li>
+In the new board ID field, type in a new id between 2 and 254
+</li>
+<li>
+Make sure you have a paper clip that can hit the small user button to the right of the jaguar.
+</li>
+<li>
+When you're ready press <code>Assign</code>
+</li>
+<li>
+As it blinks green 5 times, hit the user button to confirm the id
+</li>
+<li>
+If you did it right, it will show up as your new id in BDC-COMM. If you were too slow, just try again until it sticks.
+</li>
+</ol>
+
+
+</div>
+
+</div>
+
+<div id="outline-container-5_2_5" class="outline-4">
+<h4 id="sec-5_2_5"><span class="section-number-4">5.2.5</span> Screenshot </h4>
+<div class="outline-text-4" id="text-5_2_5">
+
+
+<div class="figure">
+<p><img src="./CAN Bus Control for the 2011 FRC Control System_files/bdc-comm.png" alt="./bdc-comm.png"></p>
+<p>BDC-COMM hooked up t an imaged black jaguar set with the ID as 2</p>
+</div>
+
+</div>
+</div>
+
+</div>
+
+<div id="outline-container-5_3" class="outline-3">
+<h3 id="sec-5_3"><span class="section-number-3">5.3</span> Grey Jaguars </h3>
+<div class="outline-text-3" id="text-5_3">
+
+<p>The process for grey jaguars is very similar, however they must be hooked up via a black jaguar since they cannot handle the DB9 to 6p6c conversion.
+</p>
+
+</div>
+
+<div id="outline-container-5_3_1" class="outline-4">
+<h4 id="sec-5_3_1"><span class="section-number-4">5.3.1</span> Hooking it up to BDC-COMM </h4>
+<div class="outline-text-4" id="text-5_3_1">
+
+
+<p>
+<img src="./CAN Bus Control for the 2011 FRC Control System_files/greyjag.png" alt="greyjag.png">
+</p>
+<p>
+You should only have one black jaguar that has already been updated and IDed and one grey jaguar hooked up at a time when setting IDs and upgrading firmware for the grey jaguar.
+</p><ol>
+<li>
+Plug the 6P6C to DB9 connector into the left input port that says 10101/NET of the <code>black jaguar</code>
+</li>
+<li>
+Plug the terminator you made into the right port of the <code>grey jaguar</code>
+</li>
+<li>
+Plug a 6P6C cable between the two remaining ports of the jaguars
+</li>
+<li>
+Plug in the DB9 end of the 6P6C to DB9 connector into the computer
+</li>
+<li>
+Start up BDC-COMM go over to the system tab and it should have one board with <code>Board ID: 1</code> and another with the ID of the black jaguar
+1 is the default ID for jaguars
+</li>
+</ol>
+
+
+</div>
+
+</div>
+
+<div id="outline-container-5_3_2" class="outline-4">
+<h4 id="sec-5_3_2"><span class="section-number-4">5.3.2</span> Troubleshooting </h4>
+<div class="outline-text-4" id="text-5_3_2">
+
+<p>It is not hooking up to the jaguar, hit <code>Status: Connected &gt; Disconnect</code> and then <code>Status: Disconnected &gt; Connect</code> to try reconnecting.
+</p>
+<p>
+If that doesn't work, double check that you wired the terminator DB9 to 6P6C cable properly. And that the 6P6C cable connecting the two jaguars.
+</p>
+</div>
+
+</div>
+
+<div id="outline-container-5_3_3" class="outline-4">
+<h4 id="sec-5_3_3"><span class="section-number-4">5.3.3</span> Loading the latest firmware </h4>
+<div class="outline-text-4" id="text-5_3_3">
+
+<ol>
+<li>
+Go to <code>File &gt; Update Firmware</code>
+</li>
+<li>
+Select <code>Jaguar92.bin</code>
+</li>
+<li>
+Click ok
+</li>
+<li>
+A progress bar should complete and the firmware version should show up as 92
+</li>
+</ol>
+
+
+</div>
+
+</div>
+
+<div id="outline-container-5_3_4" class="outline-4">
+<h4 id="sec-5_3_4"><span class="section-number-4">5.3.4</span> Setting it's ID </h4>
+<div class="outline-text-4" id="text-5_3_4">
+
+<ol>
+<li>
+In the new board ID field, type in a new id between 2 and 254
+</li>
+<li>
+Make sure you have a paper clip that can hit the small user button to the right of the jaguar.
+</li>
+<li>
+When you're ready press <code>Assign</code>
+</li>
+<li>
+As it blinks green 5 times, hit the user button to confirm the id
+</li>
+<li>
+If you did it right, it will show up as your new id in BDC-COMM. If you were too slow, just try again until it sticks.
+</li>
+</ol>
+
+
+</div>
+</div>
+</div>
+
+</div>
+
+<div id="outline-container-6" class="outline-2">
+<h2 id="sec-6"><span class="section-number-2">6</span> Imaging the CRIO </h2>
+<div class="outline-text-2" id="text-6">
+
+<p>To use CAN-bus, you have to enable it with the CRIO imaging tool. Select <code>Black Jaguar Serial Bridge</code> and enable NetConsole. Select format controller and apply the changes.
+</p>
+</div>
+
+</div>
+
+<div id="outline-container-7" class="outline-2">
+<h2 id="sec-7"><span class="section-number-2">7</span> Putting it All Together </h2>
+<div class="outline-text-2" id="text-7">
+
+<p>Now chain all of the jaguars together with a terminator in the last one and a black jaguar with the DB9 to 6P6C cable as the first and the DB9 cable in the serial port of the CRIO. Now, <i>all</i> you have to do is write the code!
+</p>
+</div>
+
+</div>
+
+<div id="outline-container-8" class="outline-2">
+<h2 id="sec-8"><span class="section-number-2">8</span> Example: Simple Driving </h2>
+<div class="outline-text-2" id="text-8">
+
+<p>Now that you have the hardware for CAN-bus set up, why not run a simple test program to see how it works? Here's a quick annotated example:
+</p>
+<p>
+Starts out with normal java header cruft…
+</p>
+
+
+<pre class="src src-java"><span class="linenr">1:  </span><span style="color: #a020f0;">package</span> org.usfirst.<span style="color: #008b8b;">frc348</span>;
+<span class="linenr">2:  </span>
+<span class="linenr">3:  </span><span style="color: #a020f0;">import</span> <span style="color: #008b8b;">edu</span>.<span style="color: #008b8b;">wpi</span>.<span style="color: #008b8b;">first</span>.<span style="color: #008b8b;">wpilibj</span>.<span style="color: #228b22;">IterativeRobot</span>;
+<span class="linenr">4:  </span><span style="color: #a020f0;">import</span> <span style="color: #008b8b;">edu</span>.<span style="color: #008b8b;">wpi</span>.<span style="color: #008b8b;">first</span>.<span style="color: #008b8b;">wpilibj</span>.<span style="color: #228b22;">CANJaguar</span>;
+<span class="linenr">5:  </span><span style="color: #a020f0;">import</span> <span style="color: #008b8b;">edu</span>.<span style="color: #008b8b;">wpi</span>.<span style="color: #008b8b;">first</span>.<span style="color: #008b8b;">wpilibj</span>.<span style="color: #228b22;">Joystick</span>;
+<span class="linenr">6:  </span>
+<span class="linenr">7:  </span><span style="color: #a020f0;">public</span> <span style="color: #a020f0;">class</span> <span style="color: #228b22;">JagBot</span> <span style="color: #a020f0;">extends</span> <span style="color: #228b22;">IterativeRobot</span> {
+<span class="linenr">8:  </span>    <span style="color: #a020f0;">private</span> <span style="color: #228b22;">String</span> <span style="color: #a0522d;">SIG</span> = <span style="color: #8b2252;">"[JagBot] "</span>;
+<span class="linenr">9:  </span>    <span style="color: #a020f0;">protected</span> <span style="color: #228b22;">Joystick</span> <span style="color: #a0522d;">leftJoy</span>, <span style="color: #a0522d;">rightJoy</span>;
+</pre>
+
+
+
+<p>
+It's basically the same as a normal Jaguar so far except that it  uses WPILibs CANJaguar class instead of WPILibs Jaguar class.
+</p>
+
+
+<pre class="src src-java"><span class="linenr">10:  </span><span style="color: #a020f0;">protected</span> <span style="color: #228b22;">CANJaguar</span> <span style="color: #a0522d;">leftJag</span>, <span style="color: #a0522d;">rightJag</span>;
+<span class="linenr">11:  </span>
+<span class="linenr">12:  </span><span style="color: #a020f0;">public</span> JagBot() {
+<span class="linenr">13:  </span>    System.out.println(SIG+<span style="color: #8b2252;">"Creating JagBot"</span>);
+<span class="linenr">14:  </span>    leftJoy = <span style="color: #a020f0;">new</span> <span style="color: #228b22;">Joystick</span>(1);
+<span class="linenr">15:  </span>    rightJoy = <span style="color: #a020f0;">new</span> <span style="color: #228b22;">Joystick</span>(2);
+</pre>
+
+
+
+<p>
+<code>GetJaguar</code> is a custom function for loading initiating CANJaguars, just pass it the id you assigned the jaguar driving the left and right motor. In this case 2 is left and 3 is right.
+</p>
+
+
+<pre class="src src-java"><span class="linenr">16:  </span>    leftJag = getJaguar(2);
+<span class="linenr">17:  </span>    rightJag = getJaguar(3);
+<span class="linenr">18:  </span>}
+</pre>
+
+
+
+<p>
+<code>getJaguar()</code> is designed to block until it finds a jaguar with the specified id. It's written with the assumption that progressing is impossible without this jaguar. This is probably true of the jaguars driving your robot, but if your arms not working you may want to continue after a few failed trials in a limited mode without say a functioning arm.
+</p>
+
+
+<pre class="src src-java"><span class="linenr">19:  </span><span style="color: #a020f0;">public</span> <span style="color: #228b22;">CANJaguar</span> <span style="color: #0000ff;">getJaguar</span>(<span style="color: #228b22;">int</span> <span style="color: #a0522d;">id</span>) {
+<span class="linenr">20:  </span>    <span style="color: #228b22;">CANJaguar</span> <span style="color: #a0522d;">jag</span> = <span style="color: #008b8b;">null</span>;
+<span class="linenr">21:  </span>    <span style="color: #a020f0;">while</span> (jag == <span style="color: #008b8b;">null</span>) {
+<span class="linenr">22:  </span>        <span style="color: #a020f0;">try</span> {
+<span class="linenr">23:  </span>            System.out.println(SIG+<span style="color: #8b2252;">"Trying to connect to CAN port "</span>+id+<span style="color: #8b2252;">"..."</span>);
+<span class="linenr">24:  </span>            jag = <span style="color: #a020f0;">new</span> <span style="color: #228b22;">CANJaguar</span>(id);
+<span class="linenr">25:  </span>        } <span style="color: #a020f0;">catch</span> (<span style="color: #228b22;">Exception</span> <span style="color: #a0522d;">e</span>) {
+<span class="linenr">26:  </span>            System.out.println(e.get-Message));
+<span class="linenr">27:  </span>        }
+<span class="linenr">28:  </span>    }
+<span class="linenr">29:  </span>    System.out.println(SIG+<span style="color: #8b2252;">"Connected to CAN port "</span>+id);
+<span class="linenr">30:  </span>    <span style="color: #a020f0;">return</span> jag;
+<span class="linenr">31:  </span>    }
+<span class="linenr">32:  </span>
+<span class="linenr">33:  </span><span style="color: #a020f0;">public</span> <span style="color: #228b22;">void</span> <span style="color: #0000ff;">robotInit</span>() {
+<span class="linenr">34:  </span>
+<span class="linenr">35:  </span>}
+<span class="linenr">36:  </span>
+<span class="linenr">37:  </span><span style="color: #a020f0;">public</span> <span style="color: #228b22;">void</span> <span style="color: #0000ff;">autonomousPeriodic</span>() {
+<span class="linenr">38:  </span>
+<span class="linenr">39:  </span>}
+</pre>
+
+
+
+<p>
+This code sets the speed of the jaguars each loop through to whatever value the joysticks Y-axis has. Be careful about printing too much in the main loop because it can cause connection issues that may manifest oddly due to the nature of the NetConsole.
+</p>
+
+
+<pre class="src src-java"><span class="linenr">40:  </span><span style="color: #a020f0;">public</span> <span style="color: #228b22;">void</span> <span style="color: #0000ff;">teleopPeriodic</span>() {
+<span class="linenr">41:  </span>    <span style="color: #a020f0;">try</span> {
+<span class="linenr">42:  </span>        leftJag.setX( leftJoy.getY() );
+<span class="linenr">43:  </span>        rightJag.setX( rightJoy.getY() );
+<span class="linenr">44:  </span>    } <span style="color: #a020f0;">catch</span> (<span style="color: #228b22;">CANTimeoutException</span> <span style="color: #a0522d;">e1</span>) {
+<span class="linenr">45:  </span>        <span style="color: #b22222;">// </span><span style="color: #b22222;">TODO Auto-generated catch block
+<span class="linenr">46:  </span></span>        e1.printStackTrace();
+<span class="linenr">47:  </span>    }
+<span class="linenr">48:  </span>}
+<span class="linenr">49:  </span>} <span style="color: #b22222;">// </span><span style="color: #b22222;">End class
+</span></pre>
+
+
+
+<p>
+That's all it takes for a simple driving robot using CAN-bus and jaguars, but if you only used that you might as well stick with PWM cables. Onto why we're actually using CAN-bus…
+</p>
+</div>
+
+</div>
+
+<div id="outline-container-9" class="outline-2">
+<h2 id="sec-9"><span class="section-number-2">9</span> CAN-bus Features Examples [0/4] </h2>
+<div class="outline-text-2" id="text-9">
+
+
+</div>
+
+<div id="outline-container-9_1" class="outline-3">
+<h3 id="sec-9_1"><span class="section-number-3">9.1</span> <span class="todo TODO"> TODO</span> Example of current for traction control </h3>
+<div class="outline-text-3" id="text-9_1">
+
+</div>
+
+</div>
+
+<div id="outline-container-9_2" class="outline-3">
+<h3 id="sec-9_2"><span class="section-number-3">9.2</span> <span class="todo TODO"> TODO</span> Example of encoders </h3>
+<div class="outline-text-3" id="text-9_2">
+
+<p>For this example I'm assuming you're wiring two <code>E4P-360-250-S4149 - US Digital Encoder</code> from the kit of parts. One encoder mounted to the left drive box and one on the right drive box. This will allow you to read the speed of each side. While we won't actually do anything other than print it out in this example, you can figure out how to use this data to improve control of the robot, write autonomous or do whatever else you want.
+</p>
+
+</div>
+
+<div id="outline-container-9_2_1" class="outline-4">
+<h4 id="sec-9_2_1"><span class="section-number-4">9.2.1</span> Hardware </h4>
+<div class="outline-text-4" id="text-9_2_1">
+
+<ul>
+<li id="sec-9_2_1_1">Wiring <br>
+Before you can write some code, you need to wire the encoders. The jaguars have a port that reads the data. Unfortunately, this 5-pin connector isn't some standard easy plug. So, you have to do some soldering. We soldered a 3-pin PWM cable from the kit of parts for the first three pins and 2-pin PWM cable for the ground. These are soldered to the 4-color encoder wire.
+
+<p>
+<b>DON'T TRUST YET – VERIFY</b>
+</p>
+<p>
+<img src="./CAN Bus Control for the 2011 FRC Control System_files/jagEncoderPins.png" alt="jagEncoderPins.png">
+</p>
+</li>
+</ul>
+<ul>
+<li id="sec-9_2_1_2">Mounting the encoders <br>
+Follow the instructions that come with the encoders to mount them. Essentially:
+<ol>
+<li>
+Screw the base on the drive box
+</li>
+<li>
+Place the disk on the shaft
+</li>
+<li>
+Place the cover over the shaft
+</li>
+<li>
+Plug the cable you made above in
+</li>
+<li>
+Plug the cable into the jaguar that will be driving it 
+</li>
+</ol>
+
+
+</li>
+</ul>
+</div>
+
+</div>
+
+<div id="outline-container-9_2_2" class="outline-4">
+<h4 id="sec-9_2_2"><span class="section-number-4">9.2.2</span> Code </h4>
+<div class="outline-text-4" id="text-9_2_2">
+
+<p>I'm assuming you read through my normal example and focusing on the new stuff related to encoders.
+</p>
+<p>
+The code begins with the standard java imports and class definitions.
+</p>
+
+
+<pre class="src src-java"><span class="linenr"> 1:  </span><span style="color: #a020f0;">package</span> org.usfirst.<span style="color: #008b8b;">frc348</span>;
+<span class="linenr"> 2:  </span>
+<span class="linenr"> 3:  </span><span style="color: #a020f0;">import</span> <span style="color: #008b8b;">edu</span>.<span style="color: #008b8b;">wpi</span>.<span style="color: #008b8b;">first</span>.<span style="color: #008b8b;">wpilibj</span>.<span style="color: #228b22;">CANJaguar</span>;
+<span class="linenr"> 4:  </span><span style="color: #a020f0;">import</span> <span style="color: #008b8b;">edu</span>.<span style="color: #008b8b;">wpi</span>.<span style="color: #008b8b;">first</span>.<span style="color: #008b8b;">wpilibj</span>.<span style="color: #008b8b;">can</span>.<span style="color: #228b22;">CANTimeoutException</span>;
+<span class="linenr"> 5:  </span><span style="color: #a020f0;">import</span> <span style="color: #008b8b;">edu</span>.<span style="color: #008b8b;">wpi</span>.<span style="color: #008b8b;">first</span>.<span style="color: #008b8b;">wpilibj</span>.<span style="color: #228b22;">AnalogModule</span>;
+<span class="linenr"> 6:  </span><span style="color: #a020f0;">import</span> <span style="color: #008b8b;">edu</span>.<span style="color: #008b8b;">wpi</span>.<span style="color: #008b8b;">first</span>.<span style="color: #008b8b;">wpilibj</span>.<span style="color: #228b22;">IterativeRobot</span>;
+<span class="linenr"> 7:  </span>
+<span class="linenr"> 8:  </span><span style="color: #a020f0;">public</span> <span style="color: #a020f0;">class</span> <span style="color: #228b22;">JagBot</span> <span style="color: #a020f0;">extends</span> <span style="color: #228b22;">IterativeRobot</span> {
+<span class="linenr"> 9:  </span>    <span style="color: #a020f0;">protected</span> <span style="color: #228b22;">int</span> <span style="color: #a0522d;">debugCounter</span> = 0;
+<span class="linenr">10:  </span>    <span style="color: #a020f0;">protected</span> <span style="color: #228b22;">Joystick</span> <span style="color: #a0522d;">leftJoy</span>, <span style="color: #a0522d;">rightJoy</span>;
+<span class="linenr">11:  </span>    <span style="color: #a020f0;">public</span> <span style="color: #228b22;">CANJaguar</span> <span style="color: #a0522d;">leftJag</span>, <span style="color: #a0522d;">rightJag</span>;
+<span class="linenr">12:  </span>
+<span class="linenr">13:  </span>    <span style="color: #a020f0;">public</span> JagBot() <span style="color: #a020f0;">throws</span> <span style="color: #228b22;">CANTimeoutException</span> {
+<span class="linenr">14:  </span>        leftJoy = <span style="color: #a020f0;">new</span> <span style="color: #228b22;">Joystick</span>(1);
+<span class="linenr">15:  </span>        rightJoy = <span style="color: #a020f0;">new</span> <span style="color: #228b22;">Joystick</span>(2);
+</pre>
+
+
+
+<p>
+I moved the <code>getJaguar()</code> function from above to <code>Utils</code>, it's nothing new.
+</p>
+
+
+<pre class="src src-java"><span class="linenr">16:  </span>leftJag = Utils.getJaguar(2);
+<span class="linenr">17:  </span>rightJag = Utils.getJaguar(3);
+</pre>
+
+
+
+<p>
+You have to tell the jaguar how many little counts of the encoder count for a rotation with <code>jag.configEncoderCodesPerRev(num)</code>. The standard encoders are <code>360</code> so you have one degree of accuracy. The robot I'm running this code on has a 3 to 2 gearing ratio so I use 540 to get rotations of the wheel as opposed to rotations of the shaft that it's mounted on. Then, you have to tell the jaguar what it should use to measure it's speed. To do that, use <code>jag.setSpeedReference(SpeedReference)</code> to set it to a quadrature encoder. Now your jaguar is read to read the speed off of the encoders.
+</p>
+
+
+<pre class="src src-java"><span class="linenr">18:  </span>    <span style="color: #a020f0;">try</span> {
+<span class="linenr">19:  </span>        leftJag.configEncoderCodesPerRev(540);
+<span class="linenr">20:  </span>        leftJag.setSpeedReference(<span style="color: #008b8b;">CANJaguar</span>.SpeedReference.kQuadEncoder);
+<span class="linenr">21:  </span>
+<span class="linenr">22:  </span>        rightJag.configEncoderCodesPerRev(540);
+<span class="linenr">23:  </span>        rightJag.setSpeedReference(<span style="color: #008b8b;">CANJaguar</span>.SpeedReference.kQuadEncoder);
+<span class="linenr">24:  </span>    } <span style="color: #a020f0;">catch</span> (<span style="color: #228b22;">CANTimeoutException</span> <span style="color: #a0522d;">e</span>) {
+<span class="linenr">25:  </span>        e.printStackTrace();
+<span class="linenr">26:  </span>    }
+<span class="linenr">27:  </span>
+<span class="linenr">28:  </span>}
+<span class="linenr">29:  </span>
+<span class="linenr">30:  </span><span style="color: #a020f0;">public</span> <span style="color: #228b22;">void</span> <span style="color: #0000ff;">teleopPeriodic</span>() {
+<span class="linenr">31:  </span>    <span style="color: #b22222;">// </span><span style="color: #b22222;">Joystick values are backwards
+<span class="linenr">32:  </span></span>    <span style="color: #228b22;">double</span> <span style="color: #a0522d;">left</span> = -leftJoy.getY();
+<span class="linenr">33:  </span>    <span style="color: #228b22;">double</span> <span style="color: #a0522d;">right</span> = -rightJoy.getY();
+<span class="linenr">34:  </span>    <span style="color: #a020f0;">try</span> {
+<span class="linenr">35:  </span>        leftJag.setX(left);
+<span class="linenr">36:  </span>        rightJag.setX(right);
+<span class="linenr">37:  </span>    } <span style="color: #a020f0;">catch</span> (<span style="color: #228b22;">CANTimeoutException</span> <span style="color: #a0522d;">e1</span>) { e1.printStackTrace(); }
+</pre>
+
+
+
+<p>
+To actually get the speed, all have to do is call <code>jag.getSpeed()</code> and you get the speed you're going at in rotations per second (<b>I believe</b>).
+</p>
+
+
+<pre class="src src-java"><span class="linenr">38:  </span>        debugCounter++;
+<span class="linenr">39:  </span>        <span style="color: #a020f0;">if</span> (debugCounter%10 == 0) {
+<span class="linenr">40:  </span>            <span style="color: #a020f0;">try</span> {
+<span class="linenr">41:  </span>                System.out.println(<span style="color: #8b2252;">"Left Speed: "</span>+leftJag.getSpeed()+
+<span class="linenr">42:  </span>                                   <span style="color: #8b2252;">" --- Right Speed: "</span>+rightJag.getSpeed());
+<span class="linenr">43:  </span>            } <span style="color: #a020f0;">catch</span> (<span style="color: #228b22;">Exception</span> <span style="color: #a0522d;">e</span>) {
+<span class="linenr">44:  </span>                e.printStackTrace();
+<span class="linenr">45:  </span>            }                   
+<span class="linenr">46:  </span>        }
+<span class="linenr">47:  </span>    }
+<span class="linenr">48:  </span>}
+</pre>
+
+
+
+<p>
+That's all there is to getting the speed with jaguars.
+</p>
+</div>
+</div>
+
+</div>
+
+<div id="outline-container-9_3" class="outline-3">
+<h3 id="sec-9_3"><span class="section-number-3">9.3</span> <span class="todo TODO"> TODO</span> Example of limit switches </h3>
+<div class="outline-text-3" id="text-9_3">
+
+</div>
+
+</div>
+
+<div id="outline-container-9_4" class="outline-3">
+<h3 id="sec-9_4"><span class="section-number-3">9.4</span> <span class="todo TODO"> TODO</span> Example of breaks </h3>
+<div class="outline-text-3" id="text-9_4">
+
+
+</div>
+</div>
+
+</div>
+
+<div id="outline-container-10" class="outline-2">
+<h2 id="sec-10"><span class="section-number-2">10</span> Conclusion </h2>
+<div class="outline-text-2" id="text-10">
+
+<p>Hopefully this document has provided you with enough information to get started CAN-bus and take advantage of its features. If you have any feedback, please email me at <code>elcron@gmail.com</code>
+</p></div>
+</div>
+<div id="postamble">
+<p class="author"> Author: Alex Henning
+</p>
+<p class="date"> Date: 2011-01-20 Thu</p>
+<p class="creator">HTML generated by org-mode 7.01trans in emacs 23</p>
+</div>
+</div>
+
+
+</body></html>

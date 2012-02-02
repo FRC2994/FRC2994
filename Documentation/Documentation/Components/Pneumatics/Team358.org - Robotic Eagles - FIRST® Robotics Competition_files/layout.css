@@ -1,0 +1,180 @@
+<!--
+/* Main */
+body {
+	position: relative; /* Needed for FireFox */
+	margin: 0px 0px 0px 0px; /* Top, Right, Bottom, Left */
+	background-color: #000000;
+	color: #FFFFFF;	
+}
+
+div#main {
+	position: relative;
+	top: 0px;
+	left: 0px;
+	z-index: 1;
+	width: 100%;
+	height: 100%;
+}
+div#header {
+	height: 220px;
+}
+div#left {
+	padding-top: 40px;
+	float: left;
+	width: 253px;
+	height: 100%;
+}
+div#right {
+	margin-left: 253px;
+	padding: 10px;
+}
+div#footer {
+	clear: both;
+	width: 100%;
+}
+
+/* Top Bar */
+div#top {
+	position: absolute;
+	top: 0px;
+	left: 0px;
+	z-index: 1;
+	width: 288px;
+	height: 220px;
+	background-image: url(images/layout/top/top.gif);
+	background-repeat: repeat-x;
+	background-position: bottom left;
+}
+div#top2 {
+	position: absolute;
+	top: 0px;
+	left: 0px;
+	z-index: 0;
+	width: 100%;
+	height: 220px;
+	background-image: url(images/layout/top/top2.gif);
+	background-repeat: repeat-x;
+	background-position: bottom left;
+}
+div#hauppauge_logo {
+	position: absolute;
+	top: 0px;
+	/*left: 263px;*/
+	right: 0px;
+	height: 220px;
+	z-index: 2;
+}
+div#first_logo {
+	position: absolute;
+	top: 51px;
+	left: 59px;
+	z-index: 2;
+}
+
+/* Side Bar */
+div#side {
+	position: absolute;
+	top: 0px;
+	left: 0px;
+	z-index: 0;
+	width: 72px;
+	height: 100%;
+	background-image: url(images/layout/side/side.gif);
+	background-repeat: repeat-y;
+}
+* html div#side {
+	height: expression(document.body.clientHeight + "px");
+}
+div#chain {
+	position: absolute;
+	top: 0px;
+	left: 100px;
+	z-index: 0;
+	width: 53px;
+	height: 100%;
+	background-image: url(images/layout/chain/gray_chain.gif);
+	background-repeat: repeat-y;
+}
+* html div#chain {
+	height: expression(document.body.clientHeight + "px");
+}
+div#side2 {
+	position: absolute;
+	top: 0px;
+	bottom: 0px;
+	left: 181px;
+	z-index: 0;
+	width: 72px;
+	height: 100%;
+	background-image: url(images/layout/side/side.gif);
+	background-repeat: repeat-y;
+}
+* html div#side2 {
+	height: expression(document.body.clientHeight + "px");
+}
+div.left_inserts {
+	width: 200px;
+	height: auto;
+	margin-top: 10px;
+	margin-left: 20px;
+	padding: 5px;
+	border: 2px solid #000000;
+	color: #FFFFFF;
+	background-color: #606060;
+}
+
+/* Bottom Bar */
+div#bottom {
+	position: relative;
+	right: 10px;
+	text-align: right;
+}
+
+/* Text Stuff */
+a:link.navigation {
+	color: #FFFF00;
+}
+a:visited.navigation {
+	color: #FFCC00;
+}
+a:hover.navigation {
+	color: #FFFFFF;
+}
+
+a:link {
+	color: #FFFF00;
+}
+a:visited {
+	color: #FFCC00;
+}
+a:hover {
+	color: #FFFFFF;
+}
+
+h1,h2,h3,h4,h5,h6 {
+	margin-top: 0px;
+	margin-bottom: 0px;
+	text-decoration: underline;
+	color: #FFD700;
+}
+ol,ul {
+	margin-top: 0px;
+	margin-bottom: 0px;
+}
+
+/* Generic Background Colors */
+.light,.bg1 {
+	background-color: #444444;
+}
+.dark,.bg2 {
+	background-color: #272A2F;
+}
+
+/* History Specific Tags */
+img.team {
+	margin-left: 10px;
+	margin-right: 10px;
+	margin-top: 10px;
+	margin-bottom: 10px;
+}
+-->
