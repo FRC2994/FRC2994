@@ -11,7 +11,7 @@ class RobotDemo : public SimpleRobot
 {
 	typedef enum {no, off, on} changes;
 	typedef enum {s1, s2, s3, s4, s5, s6, s7, s8, SWITCH_ARR_SIZE} switches;
-	typedef enum {b_shoot, b_dzero, b_dset_small, b_dset_large, b_inc_large, b_inc_small, b_dec_large, b_dec_small, BUTTON_ARR_SIZE} buttons;
+	typedef enum {b_shoot, b_dzero, b_dset_small, b_dset_large, b_inc_large, b_inc_small, b_dec_large, b_dec_small, NUM_GAMEPAD, b_j1=NUM_GAMEPAD, BUTTON_ARR_SIZE} buttons;
 public:
 	int distance;
 
