@@ -1,6 +1,11 @@
 #include "WPILib.h"
 #include "Gamepad.h"
 
+#define ButtonEvent(i) m_button_changes[(i)]
+#define ButtonState(i) m_button_current[(i)]
+#define SwitchEvent(i) m_switch_changes[(i)]
+#define SwitchState(i) m_switch_current[(i)]
+
 /**
  * This is a demo program showing the use of the RobotBase class.
  * The SimpleRobot class is the base of a robot application that will automatically call your
@@ -11,9 +16,9 @@ class RobotDemo : public SimpleRobot
 {
 	typedef enum {no, off, on} changes;
 	typedef enum {s1, s2, s3, s4, s5, s6, s7, s8, SWITCH_ARR_SIZE} switches;
-	typedef enum {b_shoot, b_dzero, b_dset_small, b_dset_large, b_inc_large, b_inc_small, b_dec_large, b_dec_small, NUM_GAMEPAD, b_j1=NUM_GAMEPAD, BUTTON_ARR_SIZE} buttons;
+	typedef enum {b_shoot, b_dzero, b_dset_small, b_dset_large, b_inc_large, b_inc_small, b_dec_large, b_dec_small, BUTTON_ARR_SIZE} buttons;
 public:
-	int distance;
+	int m_distance;
 
 	bool m_button_current[BUTTON_ARR_SIZE];
 	bool m_button_previous[BUTTON_ARR_SIZE];
@@ -23,24 +28,22 @@ public:
 	bool m_switch_previous[SWITCH_ARR_SIZE];
 	changes m_switch_changes[SWITCH_ARR_SIZE];
 
-	Gamepad *gamepad;
-	DriverStationLCD *ds_lcd;
-	Jaguar *jag_arm;
-	Joystick *joy;
+	Gamepad *m_gamepad;
+	DriverStationLCD *m_ds_lcd;
+	Joystick *m_left_joy;
 	DriverStation *ds;
 	//	DashboardDataSender *dds;
 
-	RobotDemo(void) : distance(0)
+	RobotDemo(void) : m_distance(0)
 	{
 		//		dds = new DashboardDataSender();
-		jag_arm = new Jaguar(9);
-		joy = new Joystick(1);
-		gamepad = new Gamepad(3);
-		ds_lcd = DriverStationLCD::GetInstance();
+		m_left_joy = new Joystick(2);
+		m_gamepad = new Gamepad(3);
+		m_ds_lcd = DriverStationLCD::GetInstance();
 		ds = DriverStation::GetInstance();
 		
-		ds_lcd->PrintfLine(DriverStationLCD::kUser_Line1, "Plyboy 7:20PM state test");
-		ds_lcd->UpdateLCD();
+		m_ds_lcd->PrintfLine(DriverStationLCD::kUser_Line1, "Plyboy 7:20PM state test");
+		m_ds_lcd->UpdateLCD();
 	}
 
 	bool GetSwitch(int i)
@@ -49,13 +52,13 @@ public:
 		 * TODO: Ken and Gabby code your own version of this when the actual production code is required. 
 		 * All this function needs to do is return what the current value is for a switch i.-Jack
 		 */
-		return joy->GetRawButton(i+1);
+		return m_left_joy->GetRawButton(i+1);
 	}
 
 	void ProcessType(int i, bool *current, bool *prev, changes *changes)
 	{
 		prev[i] = current[i];
-		current[i] = (current == m_button_current ? gamepad->GetRawButton(i+1) : GetSwitch(i));
+		current[i] = (current == m_button_current ? m_gamepad->GetRawButton(i+1) : GetSwitch(i));
 		if (current[i] == prev[i])
 		{
 			changes[i] = no;
@@ -118,45 +121,45 @@ public:
 		 * TODO: Ken and Gabby: You two have been, to my knowledge, been working on something to do with the control modes of the robot (correct me if I'm wrong).
 		 * I don't want to reinvent the wheel, so I'm leaving this for you guys to plug your code into.-Jack
 		 */
-		if (m_button_changes[b_shoot] == on)
+		if (ButtonEvent(b_shoot) == on)
 		{
-			ds_lcd->PrintfLine(DriverStationLCD::kUser_Line5, "Shoot!");
-			ds_lcd->UpdateLCD();
+			m_ds_lcd->PrintfLine(DriverStationLCD::kUser_Line5, "Shoot!");
+			m_ds_lcd->UpdateLCD();
 		}
-		else if (m_button_changes[b_dzero] == on)
+		else if (ButtonEvent(b_dzero) == on)
 		{
-			distance = 0;
+			m_distance = 0;
 		}
-		else if (m_button_changes[b_dset_small] == on)
+		else if (ButtonEvent(b_dset_small) == on)
 		{
-			distance = 10;
+			m_distance = 10;
 		}
-		else if (m_button_changes[b_dset_large] == on)
+		else if (ButtonEvent(b_dset_large) == on)
 		{
-			distance = 40;
+			m_distance = 40;
 		}
-		else if (m_button_changes[b_inc_large] == on)
+		else if (ButtonEvent(b_inc_large) == on)
 		{
-			distance += 5;
+			m_distance += 5;
 		}
-		else if (m_button_changes[b_dec_large] == on)
+		else if (ButtonEvent(b_dec_large) == on)
 		{
-			if (distance >= 5)
+			if (m_distance >= 5)
 			{
-				distance -= 5;
+				m_distance -= 5;
 			}
 			else
 			{
-				distance = 0;
+				m_distance = 0;
 			}
 		}
-		else if (m_button_changes[b_inc_small] == on)
+		else if (ButtonEvent(b_inc_small) == on)
 		{
-			distance += 1;
+			m_distance += 1;
 		}
-		else if (m_button_changes[b_dec_small] == on && distance != 0)
+		else if (ButtonEvent(b_dec_small) == on && m_distance != 0)
 		{
-			distance -= 1;
+			m_distance -= 1;
 		}
 	}
 	
@@ -166,7 +169,7 @@ public:
 		{
 			if (m_button_changes[i] == on || m_button_changes[i] == off)
 			{
-				ds_lcd->PrintfLine(DriverStationLCD::kUser_Line6, "Gampad %d from %d to %d", i+1, m_button_previous[i], m_button_current[i]);
+				m_ds_lcd->PrintfLine(DriverStationLCD::kUser_Line6, "Gampad %d from %d to %d", i+1, m_button_previous[i], m_button_current[i]);
 			}
 		}
 
@@ -174,18 +177,18 @@ public:
 		{
 			if (m_switch_changes[i] == on || m_switch_changes[i] == off)
 			{
-				ds_lcd->PrintfLine(DriverStationLCD::kUser_Line5, "Switch %d from %d to %d", i+1, m_switch_previous[i], m_switch_current[i]);\
+				m_ds_lcd->PrintfLine(DriverStationLCD::kUser_Line5, "Switch %d from %d to %d", i+1, m_switch_previous[i], m_switch_current[i]);\
 			}
 		}
-		ds_lcd->UpdateLCD();
+		m_ds_lcd->UpdateLCD();
 	}
 	
 	
 	//TODO: This function needs a better name!-Jack
 	void PrintDriverStation(void)
 	{
-		ds_lcd->PrintfLine(DriverStationLCD::kUser_Line2, "Shooting distance: %d", distance);
-		ds_lcd->UpdateLCD();
+		m_ds_lcd->PrintfLine(DriverStationLCD::kUser_Line2, "Shooting distance: %d", m_distance);
+		m_ds_lcd->UpdateLCD();
 	}
 	
 	void RunBallCollector(void)

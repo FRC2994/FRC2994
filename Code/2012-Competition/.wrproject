@@ -246,12 +246,12 @@
     <buildtargets>
         <buildtarget buildtool="Linker" name="SimpleTemplate" passed="false" targetname="SimpleTemplate">
             <contents>
-                <buildtargetreference name="/Jack-Gamepad/SimpleTemplate_partialImage"/>
+                <buildtargetreference name="/2012-Competition/SimpleTemplate_partialImage"/>
             </contents>
         </buildtarget>
         <buildtarget buildtool="Partial Image Linker" name="SimpleTemplate_partialImage" passed="true" targetname="SimpleTemplate_partialImage">
             <contents>
-                <folder name="/Jack-Gamepad" recursive="true"/>
+                <folder name="/2012-Competition" recursive="true"/>
             </contents>
         </buildtarget>
     </buildtargets>
