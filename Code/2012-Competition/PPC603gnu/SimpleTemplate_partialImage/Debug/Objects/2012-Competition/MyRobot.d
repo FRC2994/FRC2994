@@ -1,5 +1,5 @@
 SimpleTemplate_partialImage/Debug/Objects/2012-Competition/MyRobot.o:  \
- C:/WindRiver/workspace/2012-Competition/MyRobot.cpp \
+ C:/cygwin/home/Compaq\ User/FRC/Code/2012-Competition/MyRobot.cpp \
   C:/WindRiver/vxworks-6.3/target/h/WPILib/WPILib.h \
   C:/WindRiver/vxworks-6.3/target/h/string.h \
   C:/WindRiver/vxworks-6.3/target/h/types/vxANSI.h \
@@ -315,7 +315,7 @@ SimpleTemplate_partialImage/Debug/Objects/2012-Competition/MyRobot.o:  \
   C:/WindRiver/vxworks-6.3/target/h/WPILib/Vision/HSLImage.h \
   C:/WindRiver/vxworks-6.3/target/h/WPILib/Vision/ColorImage.h \
   C:/WindRiver/vxworks-6.3/target/h/WPILib/WPIErrors.h \
-  C:/WindRiver/workspace/2012-Competition/Gamepad.h \
+  C:/cygwin/home/Compaq\ User/FRC/Code/2012-Competition/Gamepad.h \
   C:/WindRiver/vxworks-6.3/target/h/WPILib/Joystick.h
 
 C:/WindRiver/vxworks-6.3/target/h/WPILib/WPILib.h:
@@ -948,6 +948,6 @@ C:/WindRiver/vxworks-6.3/target/h/WPILib/Vision/ColorImage.h:
 
 C:/WindRiver/vxworks-6.3/target/h/WPILib/WPIErrors.h:
 
-C:/WindRiver/workspace/2012-Competition/Gamepad.h:
+C:/cygwin/home/Compaq\ User/FRC/Code/2012-Competition/Gamepad.h:
 
 C:/WindRiver/vxworks-6.3/target/h/WPILib/Joystick.h:

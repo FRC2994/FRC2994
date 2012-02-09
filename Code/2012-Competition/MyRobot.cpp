@@ -5,18 +5,18 @@
 #define ButtonState(i) m_button_current[(i)]
 #define SwitchEvent(i) m_switch_changes[(i)]
 #define SwitchState(i) m_switch_current[(i)]
+#define CollectorSEvent(i) m_collector_changes[(i)]
+#define CollectorSState(i) m_collector_current[(i)]
 
-/**
- * This is a demo program showing the use of the RobotBase class.
- * The SimpleRobot class is the base of a robot application that will automatically call your
- * Autonomous and OperatorControl methods at the right time as controlled by the switches on
- * the driver station or the field controls.
- */ 
 class RobotDemo : public SimpleRobot
 {
+	/* The code here is a bit weird, but it makes it look really clean in user code. There is a function, GetSwitch, that returns the value of a given switch.
+	 * All the user has to do to get the value or event state of a switch or button is to use the above six macros.
+	 */
 	typedef enum {no, off, on} changes;
-	typedef enum {s1, s2, s3, s4, s5, s6, s7, s8, SWITCH_ARR_SIZE} switches;
-	typedef enum {b_shoot, b_dzero, b_dset_small, b_dset_large, b_inc_large, b_inc_small, b_dec_large, b_dec_small, BUTTON_ARR_SIZE} buttons;
+	typedef enum {s1, s2, s3, s4, SWITCH_ARR_SIZE} switches;
+	typedef enum {b_shoot, b_dzero, b_dset_small, b_dset_large, b_inc_large, b_inc_small, b_dec_large, b_dec_small, NUM_GPAD, BUTTON_ARR_SIZE} buttons;
+	typedef enum {s_shoot, s_timer, s_enable, s_flush, COLLECTOR_ARR_SIZE} collector_switches;
 public:
 	int m_distance;
 
@@ -28,37 +28,81 @@ public:
 	bool m_switch_previous[SWITCH_ARR_SIZE];
 	changes m_switch_changes[SWITCH_ARR_SIZE];
 
+	bool m_collector_current[COLLECTOR_ARR_SIZE];
+	bool m_collector_previous[COLLECTOR_ARR_SIZE];
+	changes m_collector_changes[COLLECTOR_ARR_SIZE];
+
 	Gamepad *m_gamepad;
 	DriverStationLCD *m_ds_lcd;
-	Joystick *m_left_joy;
-	DriverStation *ds;
+	Joystick *m_ljoy;
+	Joystick *m_rjoy;
+	DriverStation *m_ds;
+	Jaguar *m_ldrive;
+	Jaguar *m_rdrive;
+	Jaguar *m_arm;
+	RobotDrive *m_drive;
 	//	DashboardDataSender *dds;
 
 	RobotDemo(void) : m_distance(0)
 	{
 		//		dds = new DashboardDataSender();
-		m_left_joy = new Joystick(2);
+		m_rjoy = new Joystick(1);
+		m_ljoy = new Joystick(2);
 		m_gamepad = new Gamepad(3);
 		m_ds_lcd = DriverStationLCD::GetInstance();
-		ds = DriverStation::GetInstance();
-		
+		m_ds = DriverStation::GetInstance();
 		m_ds_lcd->PrintfLine(DriverStationLCD::kUser_Line1, "Plyboy 7:20PM state test");
 		m_ds_lcd->UpdateLCD();
+		m_ldrive = new Jaguar(1);
+		m_rdrive = new Jaguar(2);
+		m_arm = new Jaguar(3);
+		m_drive = new RobotDrive(m_ldrive, m_rdrive);
 	}
-
+	
+	void HandleArmInput(void)
+	{
+		static bool arm_up = false;
+		if (arm_up && m_rjoy->GetRawButton(7))
+		{
+			arm_up = true;
+			m_arm->Set(1.0);
+		}
+		if (!arm_up && m_ljoy->GetRawButton(8))
+		{
+			arm_up = false;
+			m_arm->Set(0.0);
+		}
+	}
+	
+	void HandleDriverInputs(void)
+	{
+		//TODO: Does this work?
+		m_drive->TankDrive(m_ljoy, m_rjoy);
+	}
+	
 	bool GetSwitch(int i)
 	{
 		/*
 		 * TODO: Ken and Gabby code your own version of this when the actual production code is required. 
 		 * All this function needs to do is return what the current value is for a switch i.-Jack
 		 */
-		return m_left_joy->GetRawButton(i+1);
+		return m_ljoy->GetRawButton(i+1);
+		// Add a switch statement here that returns the value for a given switch number.
 	}
 
 	void ProcessType(int i, bool *current, bool *prev, changes *changes)
 	{
 		prev[i] = current[i];
-		current[i] = (current == m_button_current ? m_gamepad->GetRawButton(i+1) : GetSwitch(i));
+		
+		if (current == m_button_current)
+		{
+			current[i] = m_gamepad->GetRawButton(i+1);
+		}
+		else if (current == m_switch_current || current == m_collector_current)
+		{
+			current[i] = GetSwitch(i);
+		}
+		
 		if (current[i] == prev[i])
 		{
 			changes[i] = no;
@@ -207,14 +251,13 @@ public:
 			GetSwitches();
 			
 			// Process inputs.
-			// TODO: Have a talk about where we're going to put stuff on the digital sidecar so that I/anyone else can implement these methods. They are dependent on these factors.-Jack
-//			HandleDriverInputs();
-//			HandleArmInput();
+			HandleDriverInputs();
+			HandleArmInput();
 			HandleShooterInputs();
 			
 			RunBallCollector();
 			
-			if (!ds->GetDigitalIn(1))
+			if (!m_ds->GetDigitalIn(1))
 			{
 				DebugPrint();
 			}
