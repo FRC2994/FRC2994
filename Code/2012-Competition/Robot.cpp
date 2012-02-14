@@ -17,7 +17,9 @@
 #define RightJoystickButtonState(i) m_right_joystick_current[(i)]
 #define RightJoystickButtonEvent(i) m_right_joystick_changes[(i)]
 
-
+// Driverstation digital Inputs
+#define DS_LEFT_OR_RIGHT_STICK	3
+#define DS_DRIVE_TYPE			2
 // Module Assignements
 
 // Analog Module
@@ -27,24 +29,25 @@
 #define ANALOG_S4 4
 
 // Digital IOs
-#define LEFT_DRIVE_ENCODER_A 			1
-#define LEFT_DRIVE_ENCODER_B 			2
-#define RIGHT_DRIVE_ENCODER_A			3
-#define RIGHT_DRIVE_ENCODER_B			4
-#define TOP_SHOOTER_ENCODER_A			5
-#define TOP_SHOOTER_ENCODER_B			6
-#define BOTTOM_SHOOTER_ENCODER_A		7
-#define BOTTOM_SHOOTER_ENCODER_B		8
+#define LEFT_DRIVE_ENCODER_A		1
+#define LEFT_DRIVE_ENCODER_B 		2
+#define RIGHT_DRIVE_ENCODER_A		3
+#define RIGHT_DRIVE_ENCODER_B		4
+#define TOP_SHOOTER_ENCODER_A		5
+#define TOP_SHOOTER_ENCODER_B		6
+#define BOTTOM_SHOOTER_ENCODER_A	7
+#define BOTTOM_SHOOTER_ENCODER_B	8
 #define SHOOTER_AZIUMTH_ENCODER_A	9
 #define SHOOTER_AZIMUTH_ENCODER_B	10
-#define ULTRASONIC_ENABLE				11
-#define ULTRASONIC_INPUT				12
+#define ULTRASONIC_ENABLE			11
+#define ULTRASONIC_INPUT			12
 #define CAMERA_LIGHT_ENABLE			13
 #define PNEUMATIC_PRESSURE_SWITCH	14
 
 // PWM
 #define LEFT_DRIVE_MOTOR		1
 #define RIGHT_DRIVE_MOTOR		2
+#define ARM_MOTOR				3
 #define LEFT_SHIFT_SERVO		4
 #define RIGHT_SHIFT_SERVO		5
 #define CAMERA_SERVO			6
@@ -52,7 +55,6 @@
 #define SHOOTER_AZIMUTH_MOTOR	8
 
 // Relays
-#define ARM_MOTOR			1
 #define COMPRESSOR			2
 #define BALL_DISPLAY_0		3
 #define BALL_DISPLAY_1		4
@@ -119,6 +121,15 @@ typedef enum {m1, m2, m3, m4, NUM_BALL_COLLECTOR_MOTORS} motors;
 typedef enum {I, C, D, S, W, F} collector_modes;
 char *collectorModeLetters[] = {"I", "C", "D", "S", "W", "F"};
 
+// Structure for shooter tables
+typedef struct {
+	float bottomMotorSetting;
+	float topMotorSetting;
+	UINT32 bottomDesriedRPM;
+	UINT32 topDesiredRPM;
+} shooter_table;
+#define SHOOTER_TABLE_ENTRIES 50
+
 class Robot2012 : public SimpleRobot
 {
 	// Input Devices
@@ -148,6 +159,7 @@ class Robot2012 : public SimpleRobot
 	Jaguar *shooterTopMotor;
 	Jaguar *shooterAzimuthMotor;
 	Jaguar *shooterElevationMotor;
+	Jaguar *armMotor;
 
 	// Servos
 	Servo *leftShifter;
@@ -158,7 +170,6 @@ class Robot2012 : public SimpleRobot
 	Relay *ballCollectorM1;
 	Relay *ballCollectorM2;
 	Relay *ballCollectorM3;
-	Relay *armMotor;
 	Relay *ballDisplay_0;
 	Relay *ballDisplay_1;
 
@@ -176,17 +187,32 @@ class Robot2012 : public SimpleRobot
 
 	// Ball collector state
 	collector_modes m_collectorMode;
+	UINT32 m_ballCount;
 	
-	// analog switch arrays
+	// Analog switch arrays (for ball collector)
 	typedef enum {s1, s2, s3, s4, COLLECTOR_SWITCH_ARRAY_SIZE} analog_switches;
-
+	
 	state m_collector_current[COLLECTOR_SWITCH_ARRAY_SIZE];
 	state m_collector_previous[COLLECTOR_SWITCH_ARRAY_SIZE];
 	changes m_collector_changes[COLLECTOR_SWITCH_ARRAY_SIZE];
 
-	UINT32 m_ballCount;
-	float m_bottomShooterMotorSetting;
-	float m_topShooterMotorSetting;
+	// Shooter settings
+	typedef enum {basket_low, basket_medium, basket_high,
+				  SHOOTER_HEIGHT_ARRAY_SIZE} basket_height;
+	basket_height m_targetBasketHeight;
+	
+	UINT32 	m_distance;
+
+	float  	m_shooterBottomScaleFactor;
+	float  	m_shooterTopScaleFactor;
+	float 	m_bottomShooterMotorSetting;
+	float 	m_topShooterMotorSetting;
+	UINT32 	m_bottomShooterDesiredRPM;
+	UINT32 	m_topShooterDesiredRPM;
+	
+	shooter_table 	m_lowerBasketTable[SHOOTER_TABLE_ENTRIES];
+	shooter_table 	m_middleBasketTable[SHOOTER_TABLE_ENTRIES];
+	shooter_table 	m_upperBasketTable[SHOOTER_TABLE_ENTRIES];
 	
 	// We keep wasily indexable (and extensible) arrays for only
 	// those buttons and switches that we want to monitor. These are
@@ -402,7 +428,8 @@ public:
 	
 	void HandleDriverInputs(void)
 	{
-		Joystick *current = m_ds->GetDigitalIn(3) ? rightJoystick : leftJoystick;
+		Joystick *currentJoystick = m_ds->GetDigitalIn(DS_LEFT_OR_RIGHT_STICK) ? 
+												rightJoystick : leftJoystick;
 		
 		if (EitherJoyPressed(3))
 		{
@@ -416,9 +443,9 @@ public:
 		}
 		
 		//TODO: Does this work?
-		if (!m_ds->GetDigitalIn(2))
+		if (!m_ds->GetDigitalIn(DS_DRIVE_TYPE))
 		{
-			robotDrive->ArcadeDrive(current);
+			robotDrive->ArcadeDrive(currentJoystick);
 		}
 		else
 		{
@@ -436,6 +463,16 @@ public:
 		//TODO: Ken and Gabby: Stick state machine body in here.
 	}
 
+	void DisplayCollectedBallCount(void)
+	{
+		
+	}
+	
+	void UpdateDriverStation(void)
+	{
+		
+	}
+	
 	// Main loop
 	void OperatorControl(void)
 	{
@@ -464,6 +501,14 @@ public:
 
 			// Handle the collection of balls from the floor automatically
 			RunBallCollectorStateMachine ();
+			
+			// Display the number of balls we are carrying on an display
+			// on the outside of the robot
+			DisplayCollectedBallCount();
+			
+			// Gather up all the data to be sent to the driver station
+			// and update the driver station LCD
+			UpdateDriverStation();
 		}
 	}
 };
