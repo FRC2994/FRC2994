@@ -84,7 +84,9 @@
 #define DECR_BIG	8
 
 // left joystick (real) button assignments
-#define SHIFTER 	1
+#define SHIFTER_BUTTON 	1
+#define ARM_DOWN 	2
+#define ARM_UP 		3
 #define M1_FWD		6
 #define M1_REV		7
 #define M2_FWD		8
@@ -101,6 +103,10 @@
 #define S2 2
 #define S3 3
 #define S4 4
+
+// Super shifter gear.
+#define SHIFTER_HIGH_GEAR 40
+#define SHIFTER_LOW_GEAR 140
 
 // Human input devices
 #define RIGHT_JOYSTICK	1
@@ -233,7 +239,7 @@ class Robot2012 : public SimpleRobot
 	UINT32 	m_bottomShooterDesiredRPM;
 	UINT32 	m_topShooterDesiredRPM;
 	
-	// We keep wasily indexable (and extensible) arrays for only
+	// We keep easily indexable (and extensible) arrays for only
 	// those buttons and switches that we want to monitor. These are
 	// updated at the start of each pass through the main loop
 	
@@ -332,15 +338,15 @@ public:
 		m_topShooterDesiredRPM = 0;	
 	}
 	
-	void InitGamepadButtons (void)
-	{
-		for (int i=0; i<GAMEPAD_ARRAY_SIZE; i++)
-		{
-			m_gamepad_current[i] = off;
-			m_gamepad_previous[i] = off;
-			m_gamepad_changes[i] = none;
-		}
-	}
+//	void InitGamepadButtons (void)
+//	{
+//		for (int i=0; i<GAMEPAD_ARRAY_SIZE; i++)
+//		{
+//			m_gamepad_current[i] = off;
+//			m_gamepad_previous[i] = off;
+//			m_gamepad_changes[i] = none;
+//		}
+//	}
 	
 	void ProcessChanges(state *current, state *previous, changes *change, int size)
 	{
@@ -376,19 +382,19 @@ public:
 				GAMEPAD_ARRAY_SIZE);
 	}
 
-	void InitLeftJoystickButtons (void)
-	{
-		for (int i=0; i<LEFT_JOYSTICK_ARRAY_SIZE; i++)
-		{
-			m_left_joystick_current[i] = off;
-			m_left_joystick_previous[i] = off;
-			m_left_joystick_changes[i] = none;
-		}
-	}
+//	void InitLeftJoystickButtons (void)
+//	{
+//		for (int i=0; i<LEFT_JOYSTICK_ARRAY_SIZE; i++)
+//		{
+//			m_left_joystick_current[i] = off;
+//			m_left_joystick_previous[i] = off;
+//			m_left_joystick_changes[i] = none;
+//		}
+//	}
 
 	void GetLeftJoystickButtons (void)
 	{
-		m_left_joystick_current[shift]  = leftJoystick->GetRawButton(SHIFTER) ? on : off;
+		m_left_joystick_current[shift]  = leftJoystick->GetRawButton(SHIFTER_BUTTON) ? on : off;
 		m_left_joystick_current[m1_fwd] = leftJoystick->GetRawButton(M1_FWD) ? on : off;
 		m_left_joystick_current[m1_rev] = leftJoystick->GetRawButton(M1_REV) ? on : off;
 		m_left_joystick_current[m2_fwd] = leftJoystick->GetRawButton(M2_FWD) ? on : off;
@@ -403,19 +409,19 @@ public:
 
 	}
 
-	void InitRightJoystickButtons (void)
-	{
-		for (int i=0; i<RIGHT_JOYSTICK_ARRAY_SIZE; i++)
-		{
-			m_right_joystick_current[i] = off;
-			m_right_joystick_previous[i] = off;
-			m_right_joystick_changes[i] = none;
-		}
-	}
+//	void InitRightJoystickButtons (void)
+//	{
+//		for (int i=0; i<RIGHT_JOYSTICK_ARRAY_SIZE; i++)
+//		{
+//			m_right_joystick_current[i] = off;
+//			m_right_joystick_previous[i] = off;
+//			m_right_joystick_changes[i] = none;
+//		}
+//	}
 
 	void GetRightJoystickButtons (void)
 	{
-		m_right_joystick_current[shift]  = rightJoystick->GetRawButton(SHIFTER) ? on : off;
+		m_right_joystick_current[shift]  = rightJoystick->GetRawButton(SHIFTER_BUTTON) ? on : off;
 		m_right_joystick_current[m1_fwd] = rightJoystick->GetRawButton(M1_FWD) ? on : off;
 		m_right_joystick_current[m1_rev] = rightJoystick->GetRawButton(M1_REV) ? on : off;
 		m_right_joystick_current[m2_fwd] = rightJoystick->GetRawButton(M2_FWD) ? on : off;
@@ -427,18 +433,17 @@ public:
 				m_right_joystick_previous,
 				m_right_joystick_changes,
 				RIGHT_JOYSTICK_ARRAY_SIZE);
-
 	}
 
-	void InitCollectorSwitches (void)
-	{
-		for (int i=0; i<COLLECTOR_SWITCH_ARRAY_SIZE; i++)
-		{
-			m_collector_current[i] = off;
-			m_collector_previous[i] = off;
-			m_collector_changes[i] = none;
-		}
-	}
+//	void InitCollectorSwitches (void)
+//	{
+//		for (int i=0; i<COLLECTOR_SWITCH_ARRAY_SIZE; i++)
+//		{
+//			m_collector_current[i] = off;
+//			m_collector_previous[i] = off;
+//			m_collector_changes[i] = none;
+//		}
+//	}
 
 	void GetCollectorSwitches(void)
 	{
@@ -457,7 +462,7 @@ public:
 	void HandleArm(void)
 	{
 		static bool arm_up = off;
-		if (arm_up && EitherJoystickButtonEvent(7))
+		if (!arm_up && EitherJoystickButtonEvent(7))
 		{
 			arm_up = true;
 			armMotor->Set(Relay::kForward);
@@ -472,21 +477,23 @@ public:
 	// TODO: Get rid of numeric constants
 	void HandleDriverInputs(void)
 	{
+		static bool high_gear = true;
 		Joystick *currentJoystick = m_ds->GetDigitalIn(DS_LEFT_OR_RIGHT_STICK) ? 
 												rightJoystick : leftJoystick;
 		
-		if (EitherJoystickButtonEvent(3))
+		if (EitherJoystickButtonEvent(SHIFTER_BUTTON) && high_gear)
 		{
-			leftShifter->SetAngle(40);
-			rightShifter->SetAngle(40);
+			high_gear = false;
+			leftShifter->SetAngle(SHIFTER_LOW_GEAR);
+			rightShifter->SetAngle(SHIFTER_LOW_GEAR);
 		}
-		if (EitherJoystickButtonEvent(2))
+		else if (EitherJoystickButtonEvent(SHIFTER_BUTTON) && !high_gear)
 		{
-			leftShifter->SetAngle(140);
-			rightShifter->SetAngle(140);
+			high_gear = true;
+			leftShifter->SetAngle(SHIFTER_HIGH_GEAR);
+			leftShifter->SetAngle(SHIFTER_HIGH_GEAR);
 		}
 		
-		//TODO: Does this work?
 		if (!m_ds->GetDigitalIn(DS_DRIVE_TYPE))
 		{
 			robotDrive->ArcadeDrive(currentJoystick);
