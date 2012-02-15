@@ -5,11 +5,7 @@
 // Access macros
 #define CollectorSwitchState(i) m_collector_current[(i)]
 #define CollectorSwitchEvent(i) m_collector_changes[(i)]
-#define LJoyEvent(i) m_left_joystick_changes[(i)]
-#define LJoyState(i) m_left_joystick_current[(i)]
-#define RJoyEvent(i) m_right_joystick_changes[(i)]
-#define RJoyState(i) m_right_joystick_current[(i)]
-#define EitherJoyPressed(i) (m_right_joystick_changes[(i)] == pressed || m_left_joystick_changes[(i)] == pressed)
+#define EitherJoystickButtonEvent(i) (m_right_joystick_changes[(i)] == pressed || m_left_joystick_changes[(i)] == pressed)
 #define GamepadButtonState(i) m_gamepad_current[(i)]
 #define GamepadButtonEvent(i) m_gamepad_changes[(i)]
 #define LeftJoystickButtonState(i) m_left_joystick_current[(i)]
@@ -17,9 +13,10 @@
 #define RightJoystickButtonState(i) m_right_joystick_current[(i)]
 #define RightJoystickButtonEvent(i) m_right_joystick_changes[(i)]
 
-// Driverstation digital Inputs
+// Driver station digital Inputs
 #define DS_LEFT_OR_RIGHT_STICK	3
 #define DS_DRIVE_TYPE			2
+
 // Module Assignements
 
 // Analog Module
@@ -53,6 +50,8 @@
 #define CAMERA_SERVO			6
 #define ELEVATION_MOTOR			7
 #define SHOOTER_AZIMUTH_MOTOR	8
+#define BOTTOM_SHOOTER_MOTOR	9
+#define TOP_SHOOTER_MOTOR		10
 
 // Relays
 #define COMPRESSOR			2
@@ -122,16 +121,40 @@ typedef enum {I, C, D, S, W, F} collector_modes;
 char *collectorModeLetters[] = {"I", "C", "D", "S", "W", "F"};
 
 // Structure for shooter tables
+#define SHOOTER_TABLE_ENTRIES 5  // this will have to be larger
 typedef struct {
 	float bottomMotorSetting;
 	float topMotorSetting;
 	UINT32 bottomDesriedRPM;
 	UINT32 topDesiredRPM;
 } shooter_table;
-#define SHOOTER_TABLE_ENTRIES 50
+
+const shooter_table m_lowerBasketTable[SHOOTER_TABLE_ENTRIES] =
+		{{0.0, 0.0, 0,0},
+		 {0.0, 0.0, 0,0},
+		 {0.0, 0.0, 0,0},
+		 {0.0, 0.0, 0,0},
+		 {0.0, 0.0, 0,0},
+		};
+const shooter_table 	m_middleBasketTable[SHOOTER_TABLE_ENTRIES] =
+		{{0.0, 0.0, 0,0},
+		 {0.0, 0.0, 0,0},
+		 {0.0, 0.0, 0,0},
+		 {0.0, 0.0, 0,0},
+		 {0.0, 0.0, 0,0},
+		};
+
+const shooter_table 	m_upperBasketTable[SHOOTER_TABLE_ENTRIES] =
+		{{0.0, 0.0, 0,0},
+		 {0.0, 0.0, 0,0},
+		 {0.0, 0.0, 0,0},
+		 {0.0, 0.0, 0,0},
+		 {0.0, 0.0, 0,0},
+		};
+
 
 class Robot2012 : public SimpleRobot
-{
+{	
 	// Input Devices
 
 	// Human Input
@@ -210,10 +233,6 @@ class Robot2012 : public SimpleRobot
 	UINT32 	m_bottomShooterDesiredRPM;
 	UINT32 	m_topShooterDesiredRPM;
 	
-	shooter_table 	m_lowerBasketTable[SHOOTER_TABLE_ENTRIES];
-	shooter_table 	m_middleBasketTable[SHOOTER_TABLE_ENTRIES];
-	shooter_table 	m_upperBasketTable[SHOOTER_TABLE_ENTRIES];
-	
 	// We keep wasily indexable (and extensible) arrays for only
 	// those buttons and switches that we want to monitor. These are
 	// updated at the start of each pass through the main loop
@@ -243,7 +262,7 @@ class Robot2012 : public SimpleRobot
 
 
 public:
-	Robot2012(void)
+	Robot2012(void) 
 	{
 		robotDrive = new RobotDrive(driveLeftMotor, driveRightMotor);
 
@@ -276,17 +295,41 @@ public:
 		shooterElevationValve = new Solenoid(SHOOTER_ELEVATION_SOLENOID);
 		cameraServo = 			new Servo(CAMERA_SERVO);
 		
+		shooterBottomMotor =	new Jaguar(BOTTOM_SHOOTER_MOTOR);
+		shooterTopMotor = 		new Jaguar(TOP_SHOOTER_MOTOR);
+		bottomShooterEncoder = 	new Encoder(BOTTOM_SHOOTER_ENCODER_A,
+											BOTTOM_SHOOTER_ENCODER_A);
+		topShooterEncoder = 	new Encoder(TOP_SHOOTER_ENCODER_A,
+											TOP_SHOOTER_ENCODER_A);
+		shooterElevationValve =	new Solenoid (SHOOTER_ELEVATION_SOLENOID);
+		
 		// Driver station I/O
 		ds = 	DriverStation::GetInstance();
 		dsLCD = DriverStationLCD::GetInstance();
 		dds = 	new DashboardDataFormat();
 		
-		// MIscellaneous
-		compressor = 		 new Compressor(PNEUMATIC_PRESSURE_SWITCH, COMPRESSOR);
-		camera_light = 		 new DigitalOutput(CAMERA_LIGHT_ENABLE);
-		ultrasonicSensor = 	 new Ultrasonic(ULTRASONIC_ENABLE, 
+		// Miscellaneous
+		compressor = 		new Compressor(PNEUMATIC_PRESSURE_SWITCH, COMPRESSOR);
+		camera_light = 		new DigitalOutput(CAMERA_LIGHT_ENABLE);
+		ultrasonicSensor =  new Ultrasonic(ULTRASONIC_ENABLE, 
 											ULTRASONIC_INPUT);
+		ballDisplay_0 = 	new Relay (BALL_DISPLAY_0);
+		ballDisplay_1 = 	new Relay (BALL_DISPLAY_1);
+		
+		// Ball collector motors
+		ballCollectorM1 = new Relay(BALL_COLLECTOR_M1);
+		ballCollectorM2 = new Relay(BALL_COLLECTOR_M2);
+		ballCollectorM3 = new Relay(BALL_COLLECTOR_M3);
+		
 		ballCollectorTimer = new Timer();
+		armMotor = 			 new Jaguar(ARM_MOTOR);
+		
+		m_shooterBottomScaleFactor = 1;
+		m_shooterTopScaleFactor = 1;
+		m_bottomShooterMotorSetting = 0.0;
+		m_topShooterMotorSetting = 0.0;
+		m_bottomShooterDesiredRPM = 0;
+		m_topShooterDesiredRPM = 0;	
 	}
 	
 	void InitGamepadButtons (void)
@@ -387,7 +430,6 @@ public:
 
 	}
 
-
 	void InitCollectorSwitches (void)
 	{
 		for (int i=0; i<COLLECTOR_SWITCH_ARRAY_SIZE; i++)
@@ -410,33 +452,35 @@ public:
 				m_collector_changes,
 				COLLECTOR_SWITCH_ARRAY_SIZE);	
 	}
-	
+		
+	//TODO: Decide on the correct button to use 
 	void HandleArm(void)
 	{
 		static bool arm_up = off;
-		if (arm_up && EitherJoyPressed(7))
+		if (arm_up && EitherJoystickButtonEvent(7))
 		{
 			arm_up = true;
 			armMotor->Set(Relay::kForward);
 		}
-		if (!arm_up && EitherJoyPressed(8))
+		if (!arm_up && EitherJoystickButtonEvent(8))
 		{
 			arm_up = false;
 			armMotor->Set(Relay::kReverse);
 		}
 	}
 	
+	// TODO: Get rid of numeric constants
 	void HandleDriverInputs(void)
 	{
 		Joystick *currentJoystick = m_ds->GetDigitalIn(DS_LEFT_OR_RIGHT_STICK) ? 
 												rightJoystick : leftJoystick;
 		
-		if (EitherJoyPressed(3))
+		if (EitherJoystickButtonEvent(3))
 		{
 			leftShifter->SetAngle(40);
 			rightShifter->SetAngle(40);
 		}
-		if (EitherJoyPressed(2))
+		if (EitherJoystickButtonEvent(2))
 		{
 			leftShifter->SetAngle(140);
 			rightShifter->SetAngle(140);
@@ -463,6 +507,73 @@ public:
 		//TODO: Ken and Gabby: Stick state machine body in here.
 	}
 
+	void TestBallCollector (void)
+	{
+		// Motor 1
+		if (pressed == LeftJoystickButtonEvent(6))
+		{
+			ballCollectorM1->Set(Relay::kForward);
+		}
+		if (released == LeftJoystickButtonEvent(6))
+		{
+			ballCollectorM1->Set(Relay::kOff);
+		}
+		
+		if (pressed == LeftJoystickButtonEvent(7))
+		{
+			ballCollectorM1->Set(Relay::kReverse);
+		}
+		if (released == LeftJoystickButtonEvent(7))
+		{
+			ballCollectorM1->Set(Relay::kOff);
+		}
+		
+		if (pressed == LeftJoystickButtonEvent(8))
+		{
+			ballCollectorM2->Set(Relay::kForward);
+		}
+		if (released == LeftJoystickButtonEvent(8))
+		{
+			ballCollectorM2->Set(Relay::kOff);
+		}
+		
+		// Motor 2
+		if (pressed == LeftJoystickButtonEvent(9))
+		{
+			ballCollectorM2->Set(Relay::kReverse);
+		}
+		if (released == LeftJoystickButtonEvent(9))
+		{
+			ballCollectorM2->Set(Relay::kOff);
+		}
+		if (pressed == LeftJoystickButtonEvent(8))
+		{
+			ballCollectorM2->Set(Relay::kForward);
+		}
+		if (released == LeftJoystickButtonEvent(8))
+		{
+			ballCollectorM2->Set(Relay::kOff);
+		}
+		
+		// Motor 3
+		if (pressed == LeftJoystickButtonEvent(11))
+		{
+			ballCollectorM3->Set(Relay::kReverse);
+		}
+		if (released == LeftJoystickButtonEvent(11))
+		{
+			ballCollectorM3->Set(Relay::kOff);
+		}
+		if (pressed == LeftJoystickButtonEvent(10))
+		{
+			ballCollectorM3->Set(Relay::kForward);
+		}
+		if (released == LeftJoystickButtonEvent(10))
+		{
+			ballCollectorM3->Set(Relay::kOff);
+		}
+
+	}
 	void DisplayCollectedBallCount(void)
 	{
 		
