@@ -569,22 +569,49 @@ public:
 // FIXME! We need to check to see if we are turning the motor on, fwd, or reverse!!! 	
 	void SetMotor(motor_states state, motors motor)
 	{
+		Relay::Value motor_setting;
+		
+		switch(state)
+		{
+			case motor_fwd:
+				motor_setting = Relay::kForward;
+				break;
+			case motor_rev:
+				motor_setting = Relay::kReverse;
+				break;
+			case motor_off:
+				motor_setting = Relay::kOff;
+				break;
+			default:
+				motor_setting = Relay::kOff;
+				break;
+		}
+		
 		m_motorState[motor] = state;
 		switch (motor)
 		{
 			case m1:
-				ballCollectorM1->Set(Relay::kForward);
+				ballCollectorM1->Set(motor_setting);
 				break;
 			case m2:
-				ballCollectorM1->Set(Relay::kForward);
+				ballCollectorM1->Set(motor_setting);
 				break;
 			case m3:
-				ballCollectorM1->Set(Relay::kForward);
+				ballCollectorM1->Set(motor_setting);
 				break;
 			case m4:
-				shooterBottomMotor->Set(m_bottomShooterMotorSetting);
-				shooterTopMotor->Set(m_topShooterMotorSetting);
-				// Delay here to let motors spin up?
+				if(motor_off != state)
+				{
+					shooterBottomMotor->Set(m_bottomShooterMotorSetting);
+					shooterTopMotor->Set(m_topShooterMotorSetting);
+					// Delay here to let motors spin up?
+				}
+				else
+				{
+// TODO: Measure both motor RPM's
+					shooterBottomMotor->Set(0.0);
+					shooterTopMotor->Set(0.0);
+				}
 				break;
 			default:
 				break;
