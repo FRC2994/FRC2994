@@ -14,8 +14,11 @@
 #define RightJoystickButtonEvent(i) m_right_joystick_changes[(i)]
 
 // Driver station digital Inputs
-#define DS_LEFT_OR_RIGHT_STICK	3
-#define DS_DRIVE_TYPE			2
+#define DS_DRIVE_TYPE				1
+#define DS_LEFT_OR_RIGHT_STICK		2
+#define DS_USE_MANUAL_DISTANCE		3
+#define DS_USE_ULTRASONIC_DISTANCE	4
+#define DS_USE_VISION_DISTANCE		5
 
 // Module Assignements
 
@@ -98,6 +101,11 @@
 #define FLUSH_BALL_COLLECTOR  6
 #define ENABLE_BALL_COLLECTOR 7
 
+// manual distance height settings
+#define SHORT_DISTANCE 		10
+#define MEDIUM_DISTANCE 	20
+#define LONG_DISTANCE 		30
+
 // analog (real) switch assignments
 #define S1 1
 #define S2 2
@@ -158,6 +166,8 @@ const shooter_table 	m_upperBasketTable[SHOOTER_TABLE_ENTRIES] =
 		 {0.0, 0.0, 0,0},
 		};
 
+const DriverStationLCD::Line ballCollectorDebugLine = DriverStationLCD::kUser_Line6;
+const double SHOOTER_TIMEOUT = 1.0;
 
 class Robot2012 : public SimpleRobot
 {	
@@ -506,14 +516,576 @@ public:
 	
 	void HandleShooterInputs(void)
 	{
-		//TODO: Empty block.
+		UINT32 distance = 0;
+		
+		// Handle Camera Joystick
+		cameraServo->Set((gamepad->GetLeftY()+1.0)/2.0);
+		
+		// Handle Shooter Direction
+		shooterAzimuthMotor->Set(gamepad->GetRightX());
+		
+		// Handle L,M,H Buttons
+		if (pressed == GamepadButtonEvent(LOW))
+		{
+			m_targetBasketHeight = basket_low;
+			distance = SHORT_DISTANCE;
+		}
+		if (pressed == GamepadButtonEvent(MEDIUM))
+		{
+			m_targetBasketHeight = basket_medium;
+			distance = MEDIUM_DISTANCE;
+		}
+		if (pressed == GamepadButtonEvent(HIGH))
+		{
+			m_targetBasketHeight = basket_high;
+			distance = LONG_DISTANCE;
+		}
+		
+		if ((ds->GetDigitalIn(DS_USE_MANUAL_DISTANCE)) &&
+			(!ds->GetDigitalIn(DS_USE_ULTRASONIC_DISTANCE)) &&
+			(!ds->GetDigitalIn(DS_USE_VISION_DISTANCE)))
+		{
+			m_distance = distance;
+		}
+		// Handle Shoot Button Here!
+		
 	}
+	void SetMotor(motor_states state, motors motor)
+	{
+		m_motorState[motor] = state;
+		switch (motor)
+		{
+			case m1:
+				ballCollectorM1->Set(Relay::kForward);
+				break;
+			case m2:
+				ballCollectorM1->Set(Relay::kForward);
+				break;
+			case m3:
+				ballCollectorM1->Set(Relay::kForward);
+				break;
+			case m4:
+				shooterBottomMotor->Set(m_bottomShooterMotorSetting);
+				shooterTopMotor->Set(m_bottomShooterMotorSetting);
+				// Delay here to let motors spin up?
+				break;
+			default:
+				break;
+		}
+		// change setting on actual motor
+	}
+	
+	motor_states GetMotor (motors motor)
+	{
+		return m_motorState[motor];
+	}
+	
+
+	void PrintState (int switchNum, 
+					 bool initial)
+	{
+		if (initial) 
+		{
+			dsLCD->Printf(ballCollectorDebugLine, 1, "%d:%s%d%s%s%s%s->",
+						  switchNum,
+						  collectorModeLetters[m_collectorMode],
+						  m_ballCount,
+						  GetMotor(m1),
+						  GetMotor(m2),
+						  GetMotor(m3),
+						  GetMotor(m4));
+		}
+		else
+		{
+			dsLCD->Printf(ballCollectorDebugLine, 1, "%s%d%s%s%s%s",
+						  collectorModeLetters[m_collectorMode],
+						  m_ballCount,
+						  GetMotor(m1),
+						  GetMotor(m2),
+						  GetMotor(m3),
+						  GetMotor(m4));
+		}
+	}
+
 	
 	void RunBallCollectorStateMachine(void)
 	{
-		//TODO: Ken and Gabby: Stick state machine body in here.
-	}
+		if(pressed == CollectorSwitchEvent(s1)) // switch 1
+		{
+			PrintState(1, true);
+			if ((motor_fwd == GetMotor(m1)) &&
+				(motor_fwd == GetMotor(m2)) &&
+				(motor_off == GetMotor(m3)) &&
+				(motor_off == GetMotor(m4)))
+			{
+				// xxFFOO
+				if (I == m_collectorMode)
+				{
+					switch (m_ballCount)
+					{
+						case 0:
+							// I0FFOO -> C1FFOO
+							m_collectorMode = C;
+							m_ballCount++;
+							break;
+						case 1:
+							// I1FF00 -> D2FFOO
+							m_collectorMode = D;
+							m_ballCount++;
+							break;
+						case 2:
+							// 12FFOO -> C3FFOO
+							m_collectorMode = C;
+							m_ballCount++;
+							break;
+						default:
+							// do nothing
+							break;
+					}	
+				}
+				else if (C == m_collectorMode)
+				{
+					switch (m_ballCount)
+					{
+						case 1:
+							// C1FFOO -> C2FFOO
+							m_ballCount++;
+							break;
+						case 3:
+							// C3FFOO -> C4RROO
+							m_ballCount++;
+							SetMotor(motor_rev, m1);
+							SetMotor(motor_rev, m2);
+							break;
+						case 4:
+							// C4RROO -> C3FFOO
+							m_ballCount--;	
+							SetMotor(motor_fwd, m1);
+							SetMotor(motor_fwd, m2);
+							break;
+						default:
+							// do nothing
+							break;
+					}
+				}
+				else if (D == m_collectorMode)
+				{
+					switch (m_ballCount)
+					{
+						case 2:
+							// D2FFOO -> D3FFOO
+							m_ballCount++;
+							break;
+						default:
+							// do nothing
+							break;
+					}
+				}
+				else
+				{
+					// do nothing
+				}
+			}
+			else if ((C == m_collectorMode) && 
+					(motor_fwd == GetMotor(m1)) &&
+					(motor_fwd == GetMotor(m2)) &&
+					(motor_off == GetMotor(m4)))
+			{
+				// CxFFxO
+				if ((motor_fwd == GetMotor(m3)) &&
+						(1 == m_ballCount))
+				{
+					// C1FFFO -> C2motor_offO
+					m_ballCount++;
+					SetMotor(motor_off, m1);
+				}
+				else if ((motor_off == GetMotor(m3)) &&
+					 (3 == m_ballCount))
+				{
+					// C3FFOO -> C4RROO
+					m_ballCount++;
+					SetMotor(motor_rev, m1);
+					SetMotor(motor_rev, m2);
+				}
+				else
+				{
+					// do nothing
+				}									
+			}
+			else if ((C == m_collectorMode) &&
+					(4 == m_ballCount) &&
+					(motor_rev == GetMotor(m1)) &&
+					(motor_rev == GetMotor(m2)) &&
+					(motor_off == GetMotor(m3)) &&
+					(motor_off == GetMotor(m4)))
+			{
+				// C4RROO -> C3FFOO
+				SetMotor(motor_fwd, m1);
+				SetMotor(motor_fwd, m2);
+				m_ballCount--;
+			}
+			else
+			{
+				// do nothing
+			}
+			PrintState(1, false);
+		}
+		if(pressed == CollectorSwitchEvent(s2)) // switch 2
+		{
+			PrintState(2, true);
+				if ((motor_fwd == GetMotor(m1)) &&
+					(motor_fwd == GetMotor(m2)) &&
+					(motor_off == GetMotor(m3)) &&
+					(motor_off == GetMotor(m4)))
+				{
+					if (C == m_collectorMode)
+					{
+						switch (m_ballCount)
+						{
+							case 1: // C1FFOO -> C1FFFO
+								SetMotor(motor_fwd, m3);
+								break;
+							case 2: // C2FFOO -> C2motor_offO
+								SetMotor(motor_off, m1);
+								SetMotor(motor_fwd, m3);
+								break;
+							case 3: // C3FFOO -> I3OOOO
+								SetMotor(motor_off, m1);
+								SetMotor(motor_off, m2);
+								m_collectorMode = I;
+								break;
+							default:
+								//do nothing
+								break;
+							}
+					}
+					else if (D == m_collectorMode)
+					{
+						switch (m_ballCount)
+						{
+							case 2: // D2FFOO -> D2motor_offO
+								SetMotor(motor_off, m1);
+								SetMotor(motor_fwd, m3);
+								break;
+							case 3: // D3FFOO -> D3motor_offO
+								SetMotor(motor_off, m1);
+								SetMotor(motor_fwd, m3);
+								break;
+							default:
+								//do nothing
+								break;
+						}	
+					}
+					else
+						{
+							// do nothing
+						}
+					}
+				else
+				{
+					// do nothing	
+				}
+				PrintState(2, false);
+		}
+		if(pressed == CollectorSwitchEvent(s3)) // switch 3
+		{
+			PrintState(3, true);
+			if ((motor_fwd == GetMotor(m2)) &&
+				(motor_fwd == GetMotor(m3)) &&
+				(motor_off == GetMotor(m4)))
+			{
+				// xxxFFO
+				if (C == m_collectorMode)
+				{
+					if ((1 == m_ballCount) &&
+						(motor_fwd == GetMotor(m1)))
+					{
+						// C1F
+						m_collectorMode = I;
+						SetMotor (motor_off, m3);
+					}
+					else if ((2 == m_ballCount) &&
+							 (motor_off == GetMotor(m1)))
+					{
+						// C2O
+						m_collectorMode = D;
+						SetMotor (motor_fwd, m1);
+						SetMotor (motor_off, m3);
+					}
+					else
+					{
+						// do nothing
+					}
+				}
+				else if (D == m_collectorMode)
+				{
+					if ((3 == m_ballCount) &&
+						(motor_off == GetMotor(m1)))
+					{
+						// D3O
+						m_collectorMode = C;
+						SetMotor (motor_fwd, m1);
+						SetMotor (motor_off, m3);
+					}
+					else if ((2 == m_ballCount) &&
+							 (motor_off == GetMotor(m1)))
+					{
+						// D2O
+						m_collectorMode = I;
+						SetMotor (motor_fwd, m1);
+						SetMotor (motor_off, m3);
+					}
+					else
+					{
+						// do nothing
+					}
+				}
+				else
+				{
+					// do nothing
+				}
+			}
+			else
+			{
+				// do nothing
+			}
+			PrintState(3, false);
+		}
+		if(pressed == CollectorSwitchEvent(s4)) // switch 4
+		{
+			PrintState(4, true);
+			if ((motor_off == GetMotor(m1)) &&
+				(motor_off == GetMotor(m2)) &&
+				(motor_fwd == GetMotor(m3)) &&
+				(motor_fwd == GetMotor(m4)) &&
+				(S == m_collectorMode))
+			{
+				// xxOmotor_off				
+				if (1 == m_ballCount)
+				{
+					// S1 S1Omotor_off -> W0Omotor_off
+					m_collectorMode = W;
+					m_ballCount--;
+					ballCollectorTimer->Start();
+				}
+				else if (2 == m_ballCount)
+				{
+					// S2
+					m_collectorMode = I;
+					SetMotor (motor_off, m3);
+					SetMotor (motor_off, m4);
+					m_ballCount--;
+				}
+				else
+				{
+					// do nothing
+				}
+			}
+			else if ((motor_off == GetMotor(m1)) &&
+					 (motor_fwd == GetMotor(m2)) &&
+					 (motor_fwd == GetMotor(m3)) &&
+					 (motor_off == GetMotor(m4)) &&
+					 (D == m_collectorMode))
+			{
+				// xxmotor_offO											
+				if (2 == m_ballCount)
+				{
+					// D2
+					m_collectorMode = I;
+					SetMotor (motor_fwd, m1);
+					SetMotor (motor_off, m3);
+				}
+				else if (3 == m_ballCount)
+				{
+					// D3
+					m_collectorMode = C;
+					SetMotor (motor_fwd, m1);
+					SetMotor (motor_off, m3);
+				}
+				else
+				{
+					// do nothing
+				}
+			}
+			else if ((S == m_collectorMode) &&
+					(3 == m_ballCount) &&
+					(motor_off == GetMotor(m1)) &&
+					(motor_fwd == GetMotor(m2)) &&
+					(motor_fwd == GetMotor(m3)) &&
+					(motor_fwd == GetMotor(m4)))
+			{
+				// S3motor_offF -> I2FFOO
+				m_collectorMode = I;
+				m_ballCount--;
+				SetMotor (motor_fwd, m1);
+				SetMotor (motor_off, m3);
+				SetMotor (motor_off, m4);
+			}
+			else
+			{
+				// do nothing
+			}
+			PrintState(4, false);
+		}
+		if(pressed == GamepadButtonEvent(shoot)) // switch 5
+		{
+			PrintState(5, true);
+			if ((I == m_collectorMode) &&
+				(motor_off == GetMotor(m3)) &&
+				(motor_off == GetMotor(m4)))
+			{
+				// IxxxOO
+				switch (m_ballCount)
+				{
+					// It may be important to start shooter motor (m4) first to let
+					// them speed up before m3 feeds the ball into the shooter
+					case 1:
+						if ((motor_fwd == GetMotor(m1)) &&
+							(motor_fwd == GetMotor(m2)))
+						{
+							// 1FF
+							m_collectorMode = S;
+							SetMotor (motor_fwd, m4);
+							SetMotor (motor_off, m1);
+							SetMotor (motor_off, m2);
+							SetMotor (motor_fwd, m3);
+							
+						}
+						else if ((motor_off == GetMotor(m1)) &&
+								 (motor_off == GetMotor(m2)))
+						{
+							// 1OO
+							m_collectorMode = W;
+							SetMotor (motor_fwd, m4);
+							SetMotor (motor_fwd, m3);
+							m_ballCount--;
+							ballCollectorTimer->Start();
+						}
+						else
+						{
+							// do nothing
+						}							
+						break;
+					case 2:
+						if ((motor_fwd == GetMotor(m1)) &&
+							(motor_fwd == GetMotor(m2)))
+						{
+							// 2FF
+							m_collectorMode = S;
+							SetMotor (motor_fwd, m4);
+							SetMotor (motor_off, m1);
+							SetMotor (motor_off, m2);
+							SetMotor (motor_fwd, m3);
+						}
+						else
+						{
+							// do nothing
+						}
+						break;
+					case 3:
+						if ((motor_off == GetMotor(m1)) &&
+							(motor_off == GetMotor(m2)))
+						{
+							// 3OO
+							m_collectorMode = S;
+							SetMotor (motor_fwd, m4);
+							SetMotor (motor_fwd, m2);
+							SetMotor (motor_fwd, m3);
+						}
+						else
+						{
+							// do nothing
+						}
+						break;
+					default:
+						break;
+				}
+			}
+			else
+			{
+				// do nothing
+			}
+			PrintState(5, false);
+		}
+		if(true == ballCollectorTimer->HasPeriodPassed(SHOOTER_TIMEOUT)) // switch 6
+		{
+			PrintState(6, true);
+			if ((W == m_collectorMode) &&
+				(0 == m_ballCount) &&
+				(motor_off == GetMotor(m1)) &&
+				(motor_off == GetMotor(m2)) &&
+				(motor_fwd == GetMotor(m3)) &&
+				(motor_fwd == GetMotor(m4)))
+			{
+				// W0Omotor_off -> I0FFOO
+				m_collectorMode = I;
+				SetMotor (motor_fwd, m1);
+				SetMotor (motor_fwd, m2);
+				SetMotor (motor_off, m3);
+				SetMotor (motor_off, m4);
+				ballCollectorTimer->Stop();
+			}
+			else
+			{
+				// do nothing
+			}
+			PrintState(6, false);
+		}
+		if(pressed == RightJoystickButtonEvent(enable)) // switch 7
+		{
+			PrintState(7, true);
+			if ((I == m_collectorMode) &&
+				(0 == m_ballCount) &&
+				(motor_off == GetMotor(m1)) &&
+				(motor_off == GetMotor(m2)) &&
+				(motor_off == GetMotor(m3)) &&
+				(motor_off == GetMotor(m4)))
+			{
+				// I0OOOO -> I0FFOO
+				m_collectorMode = I;
+				SetMotor (motor_fwd, m1);
+				SetMotor (motor_fwd, m2);
+				SetMotor (motor_off, m3);
+				SetMotor (motor_off, m4);
+			}
+			else
+			{
+				// XXXXXX -> I0OOOO
+				m_collectorMode = I;
+				m_ballCount = 0;
+				SetMotor (motor_off, m1);
+				SetMotor (motor_off, m2);
+				SetMotor (motor_off, m3);
+				SetMotor (motor_off, m4);
+			}
+			PrintState(7, false);
+		}
+		if(pressed == RightJoystickButtonEvent(flush)) // switch 8
+		{
+			PrintState(8, true);
+			// XXXXXX -> F0RRRO
+			m_collectorMode = F;
+			m_ballCount = 0;
+			SetMotor (motor_rev, m1);
+			SetMotor (motor_rev, m2);
+			SetMotor (motor_rev, m3);
+			SetMotor (motor_off, m4);
+			PrintState(8, false);
+		}
+		if(released == RightJoystickButtonEvent(flush))
+		{
+			PrintState(8, true);
+			// XXXXXX -> I0OOOO
+			m_collectorMode = I;
+			m_ballCount = 0;
+			SetMotor (motor_off, m1);
+			SetMotor (motor_off, m2);
+			SetMotor (motor_off, m3);
+			SetMotor (motor_off, m4);	
+			PrintState(8, false);
+		}
 
+	}
 	void TestBallCollector (void)
 	{
 		// Motor 1
