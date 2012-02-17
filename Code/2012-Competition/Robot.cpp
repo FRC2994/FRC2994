@@ -76,6 +76,11 @@
 #define BASKET_CHOICE_1			6
 #define DEBUG 					8
 
+// Driverstation analog IO assignments
+#define POSITION_SLIDER      	1
+#define BASKET_HEIGHT_SLIDER 	2
+#define SHOOTER_DELAY_SLIDER 	3
+
 // Gamepad (real) button assignments
 #define SHOOT 		1
 #define LOW			2
@@ -1264,4 +1269,43 @@ public:
 			UpdateDriverStation();
 		}
 	}
+	typedef enum {start_one, start_two, start_three, NUM_START_POSITION} start_positions;
+	void Autonomous(void)
+	{
+		float positionSlider = 0.0;
+		float basketHeightSlider = 0.0;
+		float shootDelaySlide = 0.0;
+		start_positions position;
+		
+		robotDrive->SetSafetyEnabled(false);
+		// Read configuration from driver station
+		// - position (analog slider 1)
+		positionSlider = ds->GetAnalogIn(POSITION_SLIDER);
+		if (positionSlider < 1.0)
+		{
+			position = start_one;
+		}
+		else if (positionSlider < 2.0)
+		{
+			position = start_two;
+		}
+		else
+		{
+			position = start_three;
+		}
+		// - basket level to target (analog slider 2)
+		// - delay until shooting first basket (analog slider 3)
+		// - are we in kinect mode? (digital IO ??)
+		
+		// Shoot two balls
+		
+		// Go to bridge
+		
+		// Tip bridge to release balls
+		
+		//myRobot.Drive(0.5, 0.0); 	// drive forwards half speed
+		//Wait(2.0); 				//    for 2 seconds
+		//myRobot.Drive(0.0, 0.0); 	// stop robot
+	}
+
 };
