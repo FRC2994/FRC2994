@@ -51,6 +51,15 @@ void DashboardDataFormat::SendVisionData()
 		dash.FinalizeCluster(); // target Info
 	}
 	dash.FinalizeCluster(); // wire
+	dash.AddCluster();
+	{
+		// Target number - Currently to Mid
+		dash.AddI16(1);
+		// Ball count - Currently 3.
+		dash.AddI16(3);
+		dash.AddFloat(42);
+		dash.AddString("The meaning of life, the universe, and everything.");
+	}
 	dash.Finalize();
 }
 

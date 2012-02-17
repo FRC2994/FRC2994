@@ -462,12 +462,12 @@ public:
 	void HandleArm(void)
 	{
 		static bool arm_up = off;
-		if (!arm_up && EitherJoystickButtonEvent(7))
+		if (EitherJoystickButtonEvent(ARM_UP) && !arm_up)
 		{
 			arm_up = true;
 			armMotor->Set(Relay::kForward);
 		}
-		if (!arm_up && EitherJoystickButtonEvent(8))
+		if (EitherJoystickButtonEvent(ARM_DOWN) && arm_up)
 		{
 			arm_up = false;
 			armMotor->Set(Relay::kReverse);
