@@ -13,13 +13,18 @@
 #define RightJoystickButtonState(i) m_right_joystick_current[(i)]
 #define RightJoystickButtonEvent(i) m_right_joystick_changes[(i)]
 
-// Driver station digital Inputs
+// Driver station digital inputs
 #define DS_DRIVE_TYPE				1
 #define DS_LEFT_OR_RIGHT_STICK		2
 #define DS_USE_MANUAL_DISTANCE		3
 #define DS_USE_ULTRASONIC_DISTANCE	4
 #define DS_USE_VISION_DISTANCE		5
 
+// Driver station analog inputs
+#define POSITION_SLIDER 		1
+#define BASKET_HEIGHT_SLIDER 	2
+#define DELAY_SLIDER 			3
+#define BRUDGE_SLIDER 			4
 // cRIO Module Assignements
 
 // Analog Module
@@ -101,7 +106,7 @@
 #define FLUSH_BALL_COLLECTOR  6
 #define ENABLE_BALL_COLLECTOR 7
 
-// Manual distance height settings
+// Manual distance settings
 #define SHORT_DISTANCE 		10
 #define MEDIUM_DISTANCE 	20
 #define LONG_DISTANCE 		30
@@ -1263,5 +1268,62 @@ public:
 			// and update the driver station LCD
 			UpdateDriverStation();
 		}
+	}
+	typedef enum {start_one, start_two, start_three, NUM_START_POSITION} start_positions;
+	void Autonomous(void)
+	{
+		float positionSlider = 0.0;
+		float basketHeightSlider = 0.0;
+		float shootDelaySlider = 0.0;
+		start_positions position;
+		basket_height   which_basket;
+		
+		robotDrive->SetSafetyEnabled(false);
+		// Read configuration from driver station
+		// - position (analog slider 1)
+		positionSlider = ds->GetAnalogIn(POSITION_SLIDER);
+		if (positionSlider < 1.0)
+		{
+			position = start_one;
+		}
+		else if (positionSlider < 2.0)
+		{
+			position = start_two;
+		}
+		else
+		{
+			position = start_three;
+		}
+		
+		// - basket level to target (analog slider 2)
+		basketHeightSlider = ds->GetAnalogIn(BASKET_HEIGHT_SLIDER);
+				if (basketHeightSlider < 1.0)
+				{
+					which_basket = basket_low;;
+				}
+				else if (basketHeightSlider < 2.0)
+				{
+					which_basket = basket_medium;
+				}
+				else
+				{
+					which_basket = basket_high;
+				}
+
+		// - delay until shooting first basket (analog slider 3)
+		shootDelaySlider = ds->GetAnalogIn(DELAY_SLIDER);
+		
+
+		// Shoot two balls
+		
+		// Go to bridge
+		
+		// Tip bridge to release balls
+		
+		// - are we in kinect mode? (digital IO ??)
+		
+		//myRobot.Drive(0.5, 0.0); 	// drive forwards half speed
+		//Wait(2.0); 				//    for 2 seconds
+		//myRobot.Drive(0.0, 0.0); 	// stop robot
 	}
 };
