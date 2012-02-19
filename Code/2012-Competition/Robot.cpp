@@ -684,7 +684,9 @@ public:
 
 	void HandleCameraServo ()
 	{
-		static float cameraAngle = 85; // middle of 0 -> 170 degree range
+		// initially set to middle of range
+		static float cameraAngle = Servo::GetMinAngle() + 
+								   ((Servo::GetMaxAngle() - Servo::GetMinAngle()) / 2.0); 
 		static float joystickPosition = 0;
 
 		// Handle Camera Joystick
@@ -693,7 +695,8 @@ public:
 			// Handle camera position reset
 			if (pressed == GamepadButtonEvent(camera))
 			{
-				cameraAngle = 85;
+				cameraAngle = Servo::GetMinAngle() + 
+							  ((Servo::GetMaxAngle() - Servo::GetMinAngle()) / 2.0); 
 			}
 
 			joystickPosition = gamepad->GetRightX();
@@ -714,7 +717,17 @@ public:
 			{
 				cameraAngle -= CAMERA_SERVO_SMALL_INCR;
 			}
+			
 			// Update servo position
+			if (cameraAngle < Servo::GetMinAngle())
+			{
+				cameraAngle = Servo::GetMinAngle();
+			}
+			if (cameraAngle > Servo::GetMaxAngle())
+			{
+				cameraAngle = Servo::GetMaxAngle();
+			}
+
 			cameraServo->SetAngle(cameraAngle);
 			dsLCD->PrintfLine(DriverStationLCD::kUser_Line3, "%d", cameraServo->GetAngle());
 		}
@@ -855,7 +868,7 @@ public:
 				// distance info
 				bool dataReady = table->GetBoolean("haveDistance");
 				if (dataReady) {
-					m_distance = table->GetFloat("distance");
+					m_distance = table->GetDouble("distance");
 					m_shootDataReady = true;
 					m_shootDataRequested = false;
 					cameraLight->Set(false);
