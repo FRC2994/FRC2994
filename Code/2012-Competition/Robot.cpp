@@ -135,6 +135,11 @@
 #define LEFT_JOYSTICK	2
 #define GAMEPAD			3
 
+// Autonomous
+#define BALL_WAIT		2.0
+#define ARM_WAIT		1.0
+
+
 // Shaft Encoder distance/pulse
 // 8 inch wheel: PI*8/360 = 3.14159265*8/360 = .06981317 inches per pulse
 #define DRIVE_ENCODER_DISTANCE_PER_PULSE 	0.06981317 
@@ -152,6 +157,9 @@ typedef enum {m1, m2, m3, m4, NUM_BALL_COLLECTOR_MOTORS} motors;
 typedef enum {I, C, D, S, W, F} collector_modes;
 char *collectorModeLetters[] = {"I", "C", "D", "S", "W", "F"};
 
+typedef enum {start_one, start_two, start_three, NUM_START_POSITION} start_positions;
+typedef enum {basket_low, basket_medium, basket_high, SHOOTER_HEIGHT_ARRAY_SIZE} basket_height;
+
 // Structure for shooter tables
 #define SHOOTER_TABLE_ENTRIES 5  // this will have to be larger
 typedef struct {
@@ -160,6 +168,19 @@ typedef struct {
 	UINT32 bottomDesriedRPM;
 	UINT32 topDesiredRPM;
 } shooter_table;
+typedef struct
+{
+	float speed_top;
+	float speed_bottom;
+} shooter_speed;
+
+// Make sure that the start_positions enum is declared previous to these tables.
+typedef struct
+{
+	float speed_left;
+	float speed_right;
+	float distance;
+} step_speed;
 
 const shooter_table m_lowerBasketTable[SHOOTER_TABLE_ENTRIES] =
 		{{0.0, 0.0, 0,0},
@@ -183,6 +204,38 @@ const shooter_table 	m_upperBasketTable[SHOOTER_TABLE_ENTRIES] =
 		 {0.0, 0.0, 0,0},
 		 {0.0, 0.0, 0,0},
 		};
+
+const shooter_speed m_autoShootTable[SHOOTER_HEIGHT_ARRAY_SIZE][NUM_START_POSITION] = 
+{
+		{{0}, {0}, {0}},
+		{{0}, {0}, {0}},
+		{{0}, {0}, {0}},
+};
+
+const step_speed m_autoReverse[NUM_START_POSITION] = 
+{
+		{0},
+		{0},
+		{0},
+};
+const step_speed m_autoTurnInitial[NUM_START_POSITION] = 
+{
+		{0},
+		{0},
+		{0},
+};
+const step_speed m_autoToBridge[NUM_START_POSITION] = 
+{
+		{0},
+		{0},
+		{0},
+};
+const step_speed m_autoTurnBridge[NUM_START_POSITION] = 
+{
+		{0},
+		{0},
+		{0},
+};
 
 const DriverStationLCD::Line ballCollectorDebugLine = DriverStationLCD::kUser_Line6;
 const double SHOOTER_TIMEOUT = 1.0;
@@ -258,8 +311,6 @@ class Robot2012 : public SimpleRobot
 	changes m_collector_changes[COLLECTOR_SWITCH_ARRAY_SIZE];
 
 	// Shooter settings
-	typedef enum {basket_low, basket_medium, basket_high,
-				  SHOOTER_HEIGHT_ARRAY_SIZE} basket_height;
 	basket_height m_targetBasketHeight;
 	
 	double 	m_distance;
@@ -1453,7 +1504,15 @@ public:
 	
 	void DisplayCollectedBallCount(void)
 	{
+		int count = m_ballCount;
 		
+		if (m_ballCount > 3)
+		{
+			m_ballCount = 3;
+		}
+		
+		ballDisplay_0->Set((count & 1) ? Relay::kOn : Relay::kOff);
+		ballDisplay_1->Set(((count >> 1) & 1) ? Relay::kOn : Relay::kOff);
 	}
 	
 	// Show the world our ball count on the external display
@@ -1531,14 +1590,27 @@ public:
 			UpdateDriverStation();
 		}
 	}
-	typedef enum {start_one, start_two, start_three, NUM_START_POSITION} start_positions;
+	
+	void DoAutonomousMoveStep(const step_speed speeds[NUM_START_POSITION], const start_positions initial)
+	{
+		driveLeftMotor->Set(speeds[initial].speed_left);
+		driveRightMotor->Set(speeds[initial].speed_right);
+		float dist = speeds[initial].distance;
+		while (dist < leftDriveEncoder->GetDistance())
+		{
+			Wait(0.01);
+		}
+		leftDriveEncoder->Reset();
+	}
+		
 	void Autonomous(void)
 	{
 		float positionSlider = 0.0;
 		float basketHeightSlider = 0.0;
-		float shootDelaySlider = 0.0;
+		float shootDelay = 0.0;
 		start_positions position;
 		basket_height   which_basket;
+		// TODO: Shifter default value?
 		
 		robotDrive->SetSafetyEnabled(false);
 		// Read configuration from driver station
@@ -1559,28 +1631,50 @@ public:
 		
 		// - basket level to target (analog slider 2)
 		basketHeightSlider = ds->GetAnalogIn(BASKET_HEIGHT_SLIDER);
-				if (basketHeightSlider < 1.0)
-				{
-					which_basket = basket_low;;
-				}
-				else if (basketHeightSlider < 2.0)
-				{
-					which_basket = basket_medium;
-				}
-				else
-				{
-					which_basket = basket_high;
-				}
+		if (basketHeightSlider < 1.0)
+		{
+			which_basket = basket_low;
+		}
+		else if (basketHeightSlider < 2.0)
+		{
+			which_basket = basket_medium;
+		}
+		else
+		{
+			which_basket = basket_high;
+		}
 
 		// - delay until shooting first basket (analog slider 3)
-		shootDelaySlider = ds->GetAnalogIn(DELAY_SLIDER);
+		shootDelay = ds->GetAnalogIn(DELAY_SLIDER);
 		
 
 		// Shoot two balls
+		Wait(shootDelay);
+		shooterBottomMotor->Set(m_autoShootTable[which_basket][position].speed_bottom);
+		shooterTopMotor->Set(m_autoShootTable[which_basket][position].speed_top);
+		shooterHelperMotor->Set(Relay::kForward);
+		
+		Wait(BALL_WAIT);
+		
+		shooterBottomMotor->Set(0);
+		shooterTopMotor->Set(0);
+		shooterHelperMotor->Set(Relay::kOff);
 		
 		// Go to bridge
 		
+		//TODO: Make this a constant
+		DoAutonomousMoveStep(m_autoReverse, position);
+		
+		DoAutonomousMoveStep(m_autoTurnInitial, position);
+		
+		DoAutonomousMoveStep(m_autoToBridge, position);
+		
+		DoAutonomousMoveStep(m_autoTurnBridge, position);
+		
 		// Tip bridge to release balls
+		armMotor->Set(-1.0);
+		Wait(ARM_WAIT);
+		armMotor->Set(1.0);
 		
 		// - are we in kinect mode? (digital IO ??)
 		
