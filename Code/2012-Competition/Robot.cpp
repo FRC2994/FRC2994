@@ -464,6 +464,7 @@ public:
 		m_shootRequested	 = false;
 		
 		m_debug = false;
+		dsLCD->PrintfLine(DriverStationLCD::kUser_Line1, "2012 " __TIME__);
 	}
 	
 	void ProcessChanges(state *current, state *previous, changes *change, int size)
@@ -1592,8 +1593,17 @@ public:
 		}
 	}
 	
-	void DoAutonomousMoveStep(const step_speed speeds[NUM_START_POSITION], const start_positions initial)
+	void ClearDSLine(DriverStationLCD::Line line)
 	{
+		dsLCD->PrintfLine(line, "                    ");
+		dsLCD->UpdateLCD();
+	}
+	
+	void DoAutonomousMoveStep(const step_speed speeds[NUM_START_POSITION], const start_positions initial, char * message)
+	{
+		ClearDSLine(DriverStationLCD::kUser_Line2);
+		dsLCD->PrintfLine(DriverStationLCD::kUser_Line2, "%s", message);
+		dsLCD->UpdateLCD();
 		driveLeftMotor->Set(speeds[initial].speed_left);
 		driveRightMotor->Set(speeds[initial].speed_right);
 		float dist = speeds[initial].distance;
@@ -1611,7 +1621,7 @@ public:
 		float shootDelay = 0.0;
 		start_positions position;
 		basket_height   which_basket;
-		// TODO: Shifter default value?
+		// TODO: Shifter default value? (Supposed to be low-gear. Maybe we should make it low for the more "percision" parts of autonomous, but for others make it high).
 		
 		robotDrive->SetSafetyEnabled(false);
 		// Read configuration from driver station
@@ -1649,6 +1659,9 @@ public:
 		shootDelay = ds->GetAnalogIn(DELAY_SLIDER);
 		
 
+		dsLCD->PrintfLine(DriverStationLCD::kUser_Line2, "Shooting...");
+		dsLCD->UpdateLCD();
+		
 		// Shoot two balls
 		Wait(shootDelay);
 		shooterBottomMotor->Set(m_autoShootTable[which_basket][position].speed_bottom);
@@ -1664,13 +1677,13 @@ public:
 		// Go to bridge
 		
 		//TODO: Make this a constant
-		DoAutonomousMoveStep(m_autoReverse, position);
+		DoAutonomousMoveStep(m_autoReverse, position, "Reversing...");
 		
-		DoAutonomousMoveStep(m_autoTurnInitial, position);
+		DoAutonomousMoveStep(m_autoTurnInitial, position, "Doing initial turn...");
 		
-		DoAutonomousMoveStep(m_autoToBridge, position);
+		DoAutonomousMoveStep(m_autoToBridge, position, "Driving to bridge...");
 		
-		DoAutonomousMoveStep(m_autoTurnBridge, position);
+		DoAutonomousMoveStep(m_autoTurnBridge, position, "Turning to face bridge...");
 		
 		// Tip bridge to release balls
 		armMotor->Set(-1.0);
