@@ -6,7 +6,9 @@
 // Access macros
 #define CollectorSwitchState(i) m_collector_current[(i)]
 #define CollectorSwitchEvent(i) m_collector_changes[(i)]
-#define EitherJoystickButtonEvent(i) (m_right_joystick_changes[(i)] == pressed || m_left_joystick_changes[(i)] == pressed)
+#define EitherJoystickButtonEventPressed(i) (m_right_joystick_changes[(i)] == pressed || m_left_joystick_changes[(i)] == pressed)
+#define EitherJoystickButtonEventReleased(i) (m_right_joystick_changes[(i)] == released || m_left_joystick_changes[(i)] == released)
+
 #define GamepadButtonState(i) m_gamepad_current[(i)]
 #define GamepadButtonEvent(i) m_gamepad_changes[(i)]
 #define LeftJoystickButtonState(i) m_left_joystick_current[(i)]
@@ -139,7 +141,11 @@
 #define BALL_WAIT		2.0
 #define ARM_WAIT		1.0
 
-
+// Distance measuring 
+#define ULTRASONIC_DELAY 0.050
+#define MANUAL_DIST_SMALL_INCREMENT	1
+#define MANUAL_DIST_BIG_INCREMENT	5
+	
 // Shaft Encoder distance/pulse
 // 8 inch wheel: PI*8/360 = 3.14159265*8/360 = .06981317 inches per pulse
 #define DRIVE_ENCODER_DISTANCE_PER_PULSE 	0.06981317 
@@ -159,10 +165,13 @@ char *collectorModeLetters[] = {"I", "C", "D", "S", "W", "F"};
 
 typedef enum {start_one, start_two, start_three, NUM_START_POSITION} start_positions;
 typedef enum {basket_low, basket_medium, basket_high, SHOOTER_HEIGHT_ARRAY_SIZE} basket_height;
+typedef enum {manual, automatic, NUM_SHOOTER_MODES} shooter_modes;
+
 
 // Structure for shooter tables
 #define SHOOTER_TABLE_ENTRIES 5  // this will have to be larger
 typedef struct {
+	float  distance;
 	float  bottomMotorSetting;
 	float  topMotorSetting;
 	UINT32 bottomDesriedRPM;
@@ -183,26 +192,26 @@ typedef struct
 } step_speed;
 
 const shooter_table m_lowerBasketTable[SHOOTER_TABLE_ENTRIES] =
-		{{0.0, 0.0, 0,0},
-		 {0.0, 0.0, 0,0},
-		 {0.0, 0.0, 0,0},
-		 {0.0, 0.0, 0,0},
-		 {0.0, 0.0, 0,0},
+		{{0.0, 0.0, 0.0, 0,0},
+		 {0.0, 0.0, 0.0, 0,0},
+		 {0.0, 0.0, 0.0, 0,0},
+		 {0.0, 0.0, 0.0, 0,0},
+		 {0.0, 0.0, 0.0, 0,0},
 		};
 const shooter_table 	m_middleBasketTable[SHOOTER_TABLE_ENTRIES] =
-		{{0.0, 0.0, 0,0},
-		 {0.0, 0.0, 0,0},
-		 {0.0, 0.0, 0,0},
-		 {0.0, 0.0, 0,0},
-		 {0.0, 0.0, 0,0},
+		{{0.0, 0.0, 0.0, 0,0},
+		 {0.0, 0.0, 0.0, 0,0},
+		 {0.0, 0.0, 0.0, 0,0},
+		 {0.0, 0.0, 0.0, 0,0},
+		 {0.0, 0.0, 0.0, 0,0},
 		};
 
 const shooter_table 	m_upperBasketTable[SHOOTER_TABLE_ENTRIES] =
-		{{0.0, 0.0, 0,0},
-		 {0.0, 0.0, 0,0},
-		 {0.0, 0.0, 0,0},
-		 {0.0, 0.0, 0,0},
-		 {0.0, 0.0, 0,0},
+		{{0.0, 0.0, 0.0, 0,0},
+		 {0.0, 0.0, 0.0, 0,0},
+		 {0.0, 0.0, 0.0, 0,0},
+		 {0.0, 0.0, 0.0, 0,0},
+		 {0.0, 0.0, 0.0, 0,0},
 		};
 
 const shooter_speed m_autoShootTable[SHOOTER_HEIGHT_ARRAY_SIZE][NUM_START_POSITION] = 
@@ -240,6 +249,11 @@ const step_speed m_autoTurnBridge[NUM_START_POSITION] =
 const DriverStationLCD::Line ballCollectorDebugLine = DriverStationLCD::kUser_Line6;
 const double SHOOTER_TIMEOUT = 1.0;
 #define SHOOTER_TEST_INCREMENT 0.05
+
+// Camera servo constants
+#define CAMERA_UPDATE_PERIOD 	0.1
+#define CAMERA_SERVO_BIG_INCR 	10
+#define CAMERA_SERVO_SMALL_INCR 5
 
 class Robot2012 : public SimpleRobot
 {	
@@ -312,11 +326,13 @@ class Robot2012 : public SimpleRobot
 
 	// Shooter settings
 	basket_height m_targetBasketHeight;
-	
+	shooter_modes m_shootMode;
+
 	double 	m_distance;
 	bool	m_shootDataRequested;
 	bool	m_shootDataReady;
 	bool	m_shootRequested;
+	UINT32  m_ultrasonicDownCount;
 
 	float  	m_shooterBottomScaleFactor;
 	float  	m_shooterTopScaleFactor;
@@ -459,9 +475,11 @@ public:
 		m_topShooterDesiredRPM 		= 0;
 		m_shooterElevationUp		= false;
 		
-		m_shootDataRequested = false;
-		m_shootDataReady	 = false;
-		m_shootRequested	 = false;
+		m_shootDataRequested 	= false;
+		m_shootDataReady	 	= false;
+		m_shootRequested	 	= false;
+		m_shootMode			 	= manual;
+		m_ultrasonicDownCount	= 0;
 		
 		m_debug = false;
 	}
@@ -609,16 +627,26 @@ public:
 		
 	void HandleArm(void)
 	{
-		static bool arm_up = off;
-		if (!arm_up && EitherJoystickButtonEvent(ARM_UP))
+		static bool arm_up = true;
+		
+		if (!arm_up && EitherJoystickButtonEventPressed(ARM_UP))
 		{
 			arm_up = true;
 			armMotor->Set(Relay::kForward);
 		}
-		if (!arm_up && EitherJoystickButtonEvent(ARM_DOWN))
+		if (arm_up && EitherJoystickButtonEventPressed(ARM_DOWN))
 		{
 			arm_up = false;
 			armMotor->Set(Relay::kReverse);
+		}
+		
+		if (m_debug)
+		{
+			if (EitherJoystickButtonEventReleased(ARM_UP) ||
+				EitherJoystickButtonEventReleased(ARM_DOWN))
+			{
+				armMotor->Set(Relay::kOff);
+			}
 		}
 	}
 	
@@ -628,13 +656,13 @@ public:
 		Joystick *currentJoystick = m_ds->GetDigitalIn(DS_LEFT_OR_RIGHT_STICK) ? 
 													   rightJoystick : leftJoystick;
 		
-		if (EitherJoystickButtonEvent(SHIFTER_BUTTON) && high_gear)
+		if (EitherJoystickButtonEventPressed(SHIFTER_BUTTON) && high_gear)
 		{
 			high_gear = false;
 			leftShifter->SetAngle(SHIFTER_LOW_GEAR);
 			rightShifter->SetAngle(SHIFTER_LOW_GEAR);
 		}
-		else if (EitherJoystickButtonEvent(SHIFTER_BUTTON) && !high_gear)
+		else if (EitherJoystickButtonEventPressed(SHIFTER_BUTTON) && !high_gear)
 		{
 			high_gear = true;
 			leftShifter->SetAngle(SHIFTER_HIGH_GEAR);
@@ -651,23 +679,20 @@ public:
 		}
 	}
 	
-#define CAMERA_UPDATE_PERIOD 	0.1
-#define CAMERA_SERVO_BIG_INCR 	10
-#define CAMERA_SERVO_SMALL_INCR 5
-#define ULTRASONIC_DOWN_COUNT_VALUE 9
-#define ULTRASONIC_DELAY 0.050
-
-	void HandleShooterInputs(void)
+	void HandleCameraServo ()
 	{
-		double distance = 0;
-		bool getAutoDistance = true;
-		static float joystickPosition = 0;
 		static float cameraAngle = 85; // middle of 0 -> 170 degree range
-		UINT32 ultrasonicDownCount = 0;
-		
+		static float joystickPosition = 0;
+
 		// Handle Camera Joystick
 		if (cameraTimer->HasPeriodPassed(CAMERA_UPDATE_PERIOD))
 		{
+			// Handle camera position reset
+			if (pressed == GamepadButtonEvent(camera))
+			{
+				cameraAngle = 85;
+			}
+
 			joystickPosition = gamepad->GetRightX();
 			
 			if (joystickPosition > 0.5)
@@ -686,123 +711,141 @@ public:
 			{
 				cameraAngle = CAMERA_SERVO_SMALL_INCR;
 			}
-		}
-		
-		// Handle Shooter Direction
-		shooterAzimuthMotor->Set(gamepad->GetRightX());
-		
-		// Handle camera position reset
-		if (pressed == GamepadButtonEvent(camera))
+			// Update servo position
+			cameraServo->SetAngle(cameraAngle);
+		}	
+	}
+	
+	void MakeAutoDistanceRequest(basket_height basket)
+	{
+		if (!m_shootDataRequested)
 		{
-			cameraAngle = 85;
-		}
-		
-		// Handle elevation toggle
-		if (pressed == GamepadButtonEvent(elevation))
-		{
-			if (m_shooterElevationUp)
+			m_shootDataRequested = true;
+			m_targetBasketHeight = basket;
+			m_shootMode 		 = automatic;
+			
+			if (ds->GetDigitalIn(DS_USE_ULTRASONIC_DISTANCE) &&
+				!ds->GetDigitalIn(DS_USE_VISION_DISTANCE))
 			{
-				m_shooterElevationUp = false;
+				m_ultrasonicDownCount = NUM_SAMPLES;
+				ultrasonicSensor->PingEnable(true);
+				ultrasonicSensor->GetRangeInches();  // toss away the result
+				ultrasonicSensor->PingEnable(false);
+				m_ultrasonicDownCount--;
+
+			}
+			else if (ds->GetDigitalIn(DS_USE_VISION_DISTANCE))
+			{
+				cameraLight->Set(true);
+				// send request to driverstation vision code
 			}
 			else
 			{
-				m_shooterElevationUp = true;
+				// Do nothing
 			}
-			shooterElevationValve->Set(m_shooterElevationUp);
 		}
-		
-		// Handle basket choice buttons
-		if (pressed == GamepadButtonEvent(basket_top))
-		{
-			m_targetBasketHeight = basket_high;
-			cameraLight->Set(true);
-// Send request to vision system (basket choice and camera angle)
-			m_shootDataRequested = true;
-			m_shootDataReady = true;
-			ultrasonicDownCount = ULTRASONIC_DOWN_COUNT_VALUE;
-		}
-		
-		if (pressed == GamepadButtonEvent(basket_left))
-		{
-			m_targetBasketHeight = basket_medium;
-			cameraLight->Set(true);
-// Send request to vision system (basket choice and camera angle)
-			m_shootDataRequested = true;
-			m_shootDataReady = true;
-			ultrasonicDownCount = ULTRASONIC_DOWN_COUNT_VALUE;
-		}
-		
-		if (pressed == GamepadButtonEvent(basket_right))
-		{
-			m_targetBasketHeight = basket_medium;
-			cameraLight->Set(true);
-// Send request to vision system (basket choice and camera angle)
-			m_shootDataRequested = true;
-			m_shootDataReady = true;
-			ultrasonicDownCount = ULTRASONIC_DOWN_COUNT_VALUE;
-		}
-		
-		if (pressed == GamepadButtonEvent(basket_bottom))
-		{
-			m_targetBasketHeight = basket_low;
-			cameraLight->Set(true);
-// Send request to vision system (basket choice and camera angle)
-			m_shootDataRequested = true;
-			m_shootDataReady = true;
-			ultrasonicDownCount = ULTRASONIC_DOWN_COUNT_VALUE;
-		}
+	}
 
-		// Handle L,M,H Buttons
+	void HandleShooterInputs(void)
+	{
+		// Handle buttons 1 through 4 (manual mode distance base and shoot 
+		// button)
 		if (pressed == GamepadButtonEvent(low))
 		{
 			m_targetBasketHeight = basket_low;
+			m_distance = SHORT_DISTANCE;
 			m_shootDataReady = true;
-			distance = SHORT_DISTANCE;
-			getAutoDistance = false;
+			m_shootMode = manual;
 		}
+
 		if (pressed == GamepadButtonEvent(medium))
 		{
 			m_targetBasketHeight = basket_medium;
+			m_distance = MEDIUM_DISTANCE;
 			m_shootDataReady = true;
-
-			distance = MEDIUM_DISTANCE;
-			getAutoDistance = false;
+			m_shootMode = manual;
 		}
+
 		if (pressed == GamepadButtonEvent(high))
 		{
 			m_targetBasketHeight = basket_high;
+			m_distance = LONG_DISTANCE;
 			m_shootDataReady = true;
-			distance = LONG_DISTANCE;
-			getAutoDistance = false;
+			m_shootMode = manual;
 		}
-				
-		
-		// Handle Shoot Button Here!
+
 		if (pressed == GamepadButtonEvent(shoot))
 		{
 			m_shootRequested = true;
 		}
 		
+		// Handle buttons 5 through 8 (distance increment/decrement buttons)
+		if (pressed == GamepadButtonEvent(decr_small))
+		{
+			m_distance -= MANUAL_DIST_SMALL_INCREMENT;
+		}
+		
+		if (pressed == GamepadButtonEvent(incr_small))
+		{
+			m_distance += MANUAL_DIST_SMALL_INCREMENT;
+		}
+
+		if (pressed == GamepadButtonEvent(decr_big))
+		{
+			m_distance -= MANUAL_DIST_BIG_INCREMENT;
+		}
+		
+		if (pressed == GamepadButtonEvent(incr_big))
+		{
+			m_distance += MANUAL_DIST_BIG_INCREMENT;
+		}
+
+		// Handle the DPad buttons (automatic mode basket select)
+		if (pressed == GamepadButtonEvent(basket_top))
+		{
+			MakeAutoDistanceRequest(basket_high);			
+		}
+
+		if (pressed == GamepadButtonEvent(basket_left))
+		{
+			MakeAutoDistanceRequest(basket_medium);			
+		}
+		
+		if (pressed == GamepadButtonEvent(basket_right))
+		{
+			MakeAutoDistanceRequest(basket_medium);			
+		}
+		
+		if (pressed == GamepadButtonEvent(basket_bottom))
+		{
+			MakeAutoDistanceRequest(basket_low);			
+		}
+
+		// Handle outstanding vision/ultrasonic distance requests
 		if (m_shootDataRequested)
 		{
 			if (ds->GetDigitalIn(DS_USE_ULTRASONIC_DISTANCE) &&
 				!ds->GetDigitalIn(DS_USE_VISION_DISTANCE))
 			{
 				
-				if (ultrasonicDownCount > 0)
+				if (m_ultrasonicDownCount > 0)
 				{
 					if (ultrasonicTimer->HasPeriodPassed(ULTRASONIC_DELAY))
 					{
-						ultrasonicDownCount--;
+						double distance;
+						m_ultrasonicDownCount--;
 						ultrasonicSensor->PingEnable(true);
-						m_distance = ultrasonicSensor->GetRangeInches();
+						distance = ultrasonicSensor->GetRangeInches();
+						if (distance >= 0.0)
+						{
+							m_distance = distance;
+						}
 						ultrasonicSensor->PingEnable(false);
+						m_shootDataRequested = false;
+						m_shootDataReady = true;
 					}
 				}
-				else
-				{
-					m_shootDataRequested = false;
-				}		
+
 			}
 			else if (ds->GetDigitalIn(DS_USE_VISION_DISTANCE))
 			{
@@ -818,15 +861,68 @@ public:
 			}
 			else
 			{
-				// Misconfigured! Default to using manual distance
-				m_distance = distance;
+				// should not be able to get here but...
 			}
 		}
-// TODO: At this point we have a distance and a basket choice. We need to determine:
-//  - motor RPM and hence speed (potentially using a scale factor computed by the ball 
-//    collector when it shuts off the motors
-// m_bottomShooterMotorSetting = 
-// m_topShooterMotorSetting = 
+		
+		// OK, now we have an updated distance (potentially anyway). Let's do the
+		// lookup to get the shooter motor settings
+		
+		const shooter_table *basketTable_p = NULL;
+		float lower = 0.0;
+
+		switch (m_targetBasketHeight)
+		{
+			case basket_low:
+				basketTable_p = m_lowerBasketTable;
+				break;
+			case basket_medium:
+				basketTable_p = m_middleBasketTable;
+				break;
+			case basket_high:
+				basketTable_p = m_upperBasketTable;
+				break;
+			default:
+				break;
+		}
+		
+		// Interpolate the shooter settings from the selected table
+		float maxDistance = basketTable_p[SHOOTER_TABLE_ENTRIES].distance;
+		
+		if (m_distance > maxDistance)
+		{
+			m_distance = maxDistance;
+		}
+		
+		for (int i=0; i<SHOOTER_TABLE_ENTRIES; i++)
+		{
+			if ((m_distance >= lower) && (m_distance <= basketTable_p[i].distance))
+			{
+				// Interpolate
+				float distanceDelta = basketTable_p[i].distance - lower;
+				float scaleFactor = (basketTable_p[i].distance - m_distance)/distanceDelta;
+				float bottomSpeedDelta;
+				float topSpeedDelta;
+				
+				if (i=0)
+				{
+					bottomSpeedDelta = basketTable_p[i].bottomMotorSetting;
+					topSpeedDelta = basketTable_p[i].topMotorSetting;
+				}
+				else
+				{
+					bottomSpeedDelta = basketTable_p[i].bottomMotorSetting 
+										- basketTable_p[i-1].bottomMotorSetting;
+					topSpeedDelta = basketTable_p[i].topMotorSetting 
+										- basketTable_p[i-1].topMotorSetting;
+				}
+				m_bottomShooterMotorSetting = basketTable_p[i].bottomMotorSetting - (scaleFactor * bottomSpeedDelta);
+				m_topShooterMotorSetting 	= basketTable_p[i].topMotorSetting - (scaleFactor * bottomSpeedDelta);
+				// Todo - RPM values
+				break;
+			}
+			lower = basketTable_p[i].distance;
+		}
 	}
 	
 	void TestShooterInputs ()
@@ -900,6 +996,8 @@ public:
 			case m4:
 				if(motor_off != state)
 				{
+// Check here for zero speeds on both motors? (that would be bad
+// and gum up the works
 					shooterBottomMotor->Set(m_bottomShooterMotorSetting);
 					shooterTopMotor->Set(m_topShooterMotorSetting);
 					shooterHelperMotor->Set(Relay::kForward);
@@ -916,7 +1014,6 @@ public:
 			default:
 				break;
 		}
-		// change setting on actual motor
 	}
 	
 	motor_states GetMotor (motors motor)
@@ -1551,7 +1648,7 @@ public:
 			m_debug = m_ds->GetDigitalIn(DS_DEBUG);
 			
 			// Start the compressor
-			compressor->Start();
+			//compressor->Start();
 			
 			// Get inputs that we need to know both current and previous state
 			GetGamepadButtons();
@@ -1565,11 +1662,17 @@ public:
 			// Drive the robot
 			HandleDriverInputs();
 
+			// Handle camera position change requests
+			//HandleCameraServo();
+			
 			// Process the shooter button and joystick inputs. This will result
-			HandleShooterInputs();
 			if(m_debug)
 			{
 				TestShooterInputs();
+			}
+			else
+			{
+				HandleShooterInputs();
 			}
 			
 			// Handle the collection of balls from the floor automatically
