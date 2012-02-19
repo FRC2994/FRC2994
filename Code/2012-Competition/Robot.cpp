@@ -595,10 +595,11 @@ public:
 
 	void GetCollectorSwitches(void)
 	{
-		m_collector_current[s1] = switch_1->GetTriggerState() ? on : off;
-		m_collector_current[s2] = switch_2->GetTriggerState() ? on : off;
-		m_collector_current[s3] = switch_3->GetTriggerState() ? on : off;
-		m_collector_current[s4] = switch_4->GetTriggerState() ? on : off;
+		// inverted because the wiring was inadvertently inverted
+		m_collector_current[s1] = switch_1->GetTriggerState() ? off : on;
+		m_collector_current[s2] = switch_2->GetTriggerState() ? off : on;
+		m_collector_current[s3] = switch_3->GetTriggerState() ? off : on;
+		m_collector_current[s4] = switch_4->GetTriggerState() ? off : on;
 
 		ProcessChanges(m_collector_current,
 					   m_collector_previous,
