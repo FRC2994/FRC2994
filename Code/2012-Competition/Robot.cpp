@@ -408,7 +408,6 @@ public:
 //		shooterElevationMotor = new Jaguar(ELEVATION_MOTOR);
 //		shooterAzimuthEncoder = new Encoder(SHOOTER_AZIUMTH_ENCODER_A,
 //											SHOOTER_AZIMUTH_ENCODER_B);
-		shooterElevationValve = new Solenoid(SHOOTER_ELEVATION_SOLENOID);
 		cameraServo = 			new Servo(CAMERA_SERVO);
 
 		shooterBottomMotor =	new Jaguar(BOTTOM_SHOOTER_MOTOR);
@@ -473,6 +472,7 @@ public:
 		m_bottomShooterDesiredRPM 	= 0;
 		m_topShooterDesiredRPM 		= 0;
 		m_shooterElevationUp		= false;
+		m_targetBasketHeight		= basket_low;
 
 		m_shootDataRequested 	= false;
 		m_shootDataReady	 	= false;
@@ -867,11 +867,14 @@ public:
 		
 		if (!m_shooterElevationUp && (pressed == GamepadButtonEvent(elevation)))
 		{
+			dsLCD->PrintfLine(DriverStationLCD::kUser_Line2,"Setting up");
 			m_shooterElevationUp = true;
 			shooterElevationValve->Set(m_shooterElevationUp);
 		}
-		else if (m_shooterElevationUp && (pressed == GamepadButtonEvent(elevation)))
+		else if ((pressed == GamepadButtonEvent(elevation)) && m_shooterElevationUp)
 		{
+			dsLCD->PrintfLine(DriverStationLCD::kUser_Line2,"Setting down");
+
 			m_shooterElevationUp = false;
 			shooterElevationValve->Set(m_shooterElevationUp);
 		}
@@ -941,11 +944,15 @@ public:
 		}
 
 		// Interpolate the shooter settings from the selected table
-		float maxDistance = basketTable_p[SHOOTER_TABLE_ENTRIES].distance;
+		float maxDistance = basketTable_p[SHOOTER_TABLE_ENTRIES-1].distance;
 
 		if (m_distance > maxDistance)
 		{
 			m_distance = maxDistance;
+		}
+		else if (m_distance < 0)
+		{
+			m_distance = 0;
 		}
 
 		for (int i=0; i<SHOOTER_TABLE_ENTRIES; i++)
@@ -1741,7 +1748,8 @@ public:
 			}
 
 			// Handle the collection of balls from the floor automatically
-			if(m_debug)
+			if (false)
+//			if(m_debug)
 			{
 				TestBallCollector();
 			}
