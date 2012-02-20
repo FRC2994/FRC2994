@@ -6,8 +6,6 @@
 // Access macros
 #define CollectorSwitchState(i) m_collector_current[(i)]
 #define CollectorSwitchEvent(i) m_collector_changes[(i)]
-#define EitherJoystickButtonEventPressed(i) (m_right_joystick_changes[(i)] == pressed || m_left_joystick_changes[(i)] == pressed)
-#define EitherJoystickButtonEventReleased(i) (m_right_joystick_changes[(i)] == released || m_left_joystick_changes[(i)] == released)
 
 #define GamepadButtonState(i) m_gamepad_current[(i)]
 #define GamepadButtonEvent(i) m_gamepad_changes[(i)]
@@ -283,7 +281,7 @@ class Robot2012 : public SimpleRobot
 	Jaguar *shooterBottomMotor;
 	Jaguar *shooterTopMotor;
 	Jaguar *shooterAzimuthMotor;
-	Jaguar *shooterElevationMotor;
+//	Jaguar *shooterElevationMotor;
 	Jaguar *armMotor;
 
 	// Servos
@@ -301,7 +299,7 @@ class Robot2012 : public SimpleRobot
 
 	// Misc
 	RobotDrive 			*robotDrive;
-	DashboardDataFormat *dds;
+//	DashboardDataFormat *dds;
 	DriverStationLCD 	*dsLCD;
 	DriverStation 		*ds;
 	Timer 				*ballCollectorTimer;
@@ -350,14 +348,14 @@ class Robot2012 : public SimpleRobot
 	// gamepad abstract arrays
 	typedef enum {shoot, low, medium, high, incr_small, incr_big, decr_small,
 				  decr_big, basket_top, basket_left, basket_right, basket_bottom,
-				  camera, elevation, GAMEPAD_ARRAY_SIZE} gamepad_buttons;
+				  camera, elevation, enable, flush,GAMEPAD_ARRAY_SIZE} gamepad_buttons;
 
 	state   m_gamepad_current[GAMEPAD_ARRAY_SIZE];
 	state   m_gamepad_previous[GAMEPAD_ARRAY_SIZE];
 	changes m_gamepad_changes[GAMEPAD_ARRAY_SIZE];
 
 	// left joystick abstract arrays
-	typedef enum {shift, m1_fwd, m1_rev, m2_fwd, m2_rev, m3_fwd, m3_rev,
+	typedef enum {shiftl, arm_upl, arm_downl, m1_fwd, m1_rev, m2_fwd, m2_rev, m3_fwd, m3_rev,
 	LEFT_JOYSTICK_ARRAY_SIZE} left_joystick_buttons;
 
 	state   m_left_joystick_current[LEFT_JOYSTICK_ARRAY_SIZE];
@@ -365,7 +363,8 @@ class Robot2012 : public SimpleRobot
 	changes m_left_joystick_changes[LEFT_JOYSTICK_ARRAY_SIZE];
 
 	// right joystick abstract arrays
-	typedef enum {flush, enable, RIGHT_JOYSTICK_ARRAY_SIZE} right_joystick_buttons;
+	typedef enum {shiftr, arm_upr, arm_downr, shooter_top_inc, shooter_top_dec, shooter_bot_inc, 
+				  shooter_bot_dec, shooter_mot, RIGHT_JOYSTICK_ARRAY_SIZE} right_joystick_buttons;
 
 	state   m_right_joystick_current[RIGHT_JOYSTICK_ARRAY_SIZE];
 	state   m_right_joystick_previous[RIGHT_JOYSTICK_ARRAY_SIZE];
@@ -377,7 +376,6 @@ class Robot2012 : public SimpleRobot
 public:
 	Robot2012(void)
 	{
-		robotDrive = new RobotDrive(driveLeftMotor, driveRightMotor);
 
 		// Human input devices
 		gamepad = 		new Gamepad(GAMEPAD);
@@ -407,7 +405,7 @@ public:
 
 		// Ball shooter motors, encoders, and controls
 		shooterAzimuthMotor = 	new Jaguar(SHOOTER_AZIMUTH_MOTOR);
-		shooterElevationMotor = new Jaguar(ELEVATION_MOTOR);
+//		shooterElevationMotor = new Jaguar(ELEVATION_MOTOR);
 //		shooterAzimuthEncoder = new Encoder(SHOOTER_AZIUMTH_ENCODER_A,
 //											SHOOTER_AZIMUTH_ENCODER_B);
 		shooterElevationValve = new Solenoid(SHOOTER_ELEVATION_SOLENOID);
@@ -448,7 +446,7 @@ public:
 		// Driver station I/O
 		ds = 	DriverStation::GetInstance();
 		dsLCD = DriverStationLCD::GetInstance();
-		dds = 	new DashboardDataFormat();
+//		dds = 	new DashboardDataFormat();
 
 		// Miscellaneous
 		compressor = 		new Compressor(PNEUMATIC_PRESSURE_SWITCH, COMPRESSOR);
@@ -485,6 +483,9 @@ public:
 
 		m_debug = false;
 		dsLCD->PrintfLine(DriverStationLCD::kUser_Line1, "2012 " __TIME__);
+		dsLCD->UpdateLCD();
+		robotDrive = new RobotDrive(driveLeftMotor, driveRightMotor);
+		robotDrive->SetExpiration(0.5);
 	}
 
 	void ProcessChanges(state *current, state *previous, changes *change, int size)
@@ -515,6 +516,8 @@ public:
 		m_gamepad_current[incr_big] = 	gamepad->GetRawButton(INCR_BIG) ? on : off;
 		m_gamepad_current[decr_small] = gamepad->GetRawButton(DECR_SMALL) ? on : off;
 		m_gamepad_current[decr_big] = 	gamepad->GetRawButton(DECR_BIG) ? on : off;
+		m_gamepad_current[enable] = 	gamepad->GetRawButton(ENABLE) ? on : off;
+		m_gamepad_current[flush] = 		gamepad->GetRawButton(FLUSH) ? on : off;
 
 		// Read stick buttons
 		m_gamepad_current[camera] = 	gamepad->GetLeftPush() ? on : off;
@@ -560,22 +563,22 @@ public:
 //			m_left_joystick_changes[i]  = none;
 //		}
 //	}
-
 	void GetLeftJoystickButtons (void)
 	{
-		m_left_joystick_current[shift]  = leftJoystick->GetRawButton(SHIFTER_BUTTON) ? on : off;
-		m_left_joystick_current[m1_fwd] = leftJoystick->GetRawButton(BC_FRONT_FWD) ? on : off;
-		m_left_joystick_current[m1_rev] = leftJoystick->GetRawButton(BC_FRONT_REV) ? on : off;
-		m_left_joystick_current[m2_fwd] = leftJoystick->GetRawButton(BC_MIDDLE_FWD) ? on : off;
-		m_left_joystick_current[m2_rev] = leftJoystick->GetRawButton(BC_MIDDLE_REV) ? on : off;
-		m_left_joystick_current[m3_fwd] = leftJoystick->GetRawButton(BC_VERTICAL_FWD) ? on : off;
-		m_left_joystick_current[m3_rev] = leftJoystick->GetRawButton(BC_VERTICAL_REV) ? on : off;
+		m_left_joystick_current[shiftl]  = 		leftJoystick->GetRawButton(SHIFTER_BUTTON) ? on : off;
+		m_left_joystick_current[arm_upl]  = 	leftJoystick->GetRawButton(ARM_UP) ? on : off;
+		m_left_joystick_current[arm_downl]  = 	leftJoystick->GetRawButton(ARM_DOWN) ? on : off;
+		m_left_joystick_current[m1_fwd] =		leftJoystick->GetRawButton(BC_FRONT_FWD) ? on : off;
+		m_left_joystick_current[m1_rev] = 		leftJoystick->GetRawButton(BC_FRONT_REV) ? on : off;
+		m_left_joystick_current[m2_fwd] = 		leftJoystick->GetRawButton(BC_MIDDLE_FWD) ? on : off;
+		m_left_joystick_current[m2_rev] = 		leftJoystick->GetRawButton(BC_MIDDLE_REV) ? on : off;
+		m_left_joystick_current[m3_fwd] = 		leftJoystick->GetRawButton(BC_VERTICAL_FWD) ? on : off;
+		m_left_joystick_current[m3_rev] = 		leftJoystick->GetRawButton(BC_VERTICAL_REV) ? on : off;
 
 		ProcessChanges(m_left_joystick_current,
 					   m_left_joystick_previous,
 					   m_left_joystick_changes,
 					   LEFT_JOYSTICK_ARRAY_SIZE);
-
 	}
 
 //	void InitRightJoystickButtons (void)
@@ -590,13 +593,14 @@ public:
 
 	void GetRightJoystickButtons (void)
 	{
-		m_right_joystick_current[shift]  = rightJoystick->GetRawButton(SHIFTER_BUTTON) ? on : off;
-		m_right_joystick_current[m1_fwd] = rightJoystick->GetRawButton(BC_FRONT_FWD) ? on : off;
-		m_right_joystick_current[m1_rev] = rightJoystick->GetRawButton(BC_FRONT_REV) ? on : off;
-		m_right_joystick_current[m2_fwd] = rightJoystick->GetRawButton(BC_MIDDLE_FWD) ? on : off;
-		m_right_joystick_current[m2_rev] = rightJoystick->GetRawButton(BC_MIDDLE_REV) ? on : off;
-		m_right_joystick_current[m3_fwd] = rightJoystick->GetRawButton(BC_VERTICAL_FWD) ? on : off;
-		m_right_joystick_current[m3_rev] = rightJoystick->GetRawButton(BC_VERTICAL_REV) ? on : off;
+		m_right_joystick_current[shiftr]  = 		rightJoystick->GetRawButton(SHIFTER_BUTTON) ? on : off;
+		m_right_joystick_current[arm_upr] = 		rightJoystick->GetRawButton(ARM_UP) ? on : off;
+		m_right_joystick_current[arm_downr] = 		rightJoystick->GetRawButton(ARM_DOWN) ? on : off;
+		m_right_joystick_current[shooter_top_inc] = rightJoystick->GetRawButton(SHOOTER_TOP_INCREASE) ? on : off;
+		m_right_joystick_current[shooter_top_dec] = rightJoystick->GetRawButton(SHOOTER_TOP_DECREASE) ? on : off;
+		m_right_joystick_current[shooter_bot_inc] = rightJoystick->GetRawButton(SHOOTER_BOTTOM_INCREASE) ? on : off;
+		m_right_joystick_current[shooter_bot_dec] = rightJoystick->GetRawButton(SHOOTER_BOTTOM_DECREASE) ? on : off;
+		m_right_joystick_current[shooter_mot] = 	rightJoystick->GetRawButton(SHOOTER_RUN_MOTORS) ? on : off;
 
 		ProcessChanges(m_right_joystick_current,
 					   m_right_joystick_previous,
@@ -630,25 +634,42 @@ public:
 
 	void HandleArm(void)
 	{
-		static bool arm_up = true;
-
-		if (!arm_up && EitherJoystickButtonEventPressed(ARM_UP))
-		{
-			arm_up = true;
-			armMotor->Set(Relay::kForward);
-		}
-		if (arm_up && EitherJoystickButtonEventPressed(ARM_DOWN))
-		{
-			arm_up = false;
-			armMotor->Set(Relay::kReverse);
-		}
+		static bool armUp = true;
 
 		if (m_debug)
 		{
-			if (EitherJoystickButtonEventReleased(ARM_UP) ||
-				EitherJoystickButtonEventReleased(ARM_DOWN))
+			if ((pressed == RightJoystickButtonEvent(arm_upr)) ||
+				(pressed == LeftJoystickButtonEvent(arm_upl)))
 			{
-				armMotor->Set(Relay::kOff);
+				armMotor->Set(-0.2);
+			}
+			if ((pressed == RightJoystickButtonEvent(arm_downr)) ||
+				(pressed == LeftJoystickButtonEvent(arm_downl)))
+			{
+				armMotor->Set(0.2);
+			}
+			
+			if ((released == RightJoystickButtonEvent(arm_upr)) ||
+				(released == LeftJoystickButtonEvent(arm_upl)) ||
+				(released == RightJoystickButtonEvent(arm_downr)) ||
+				(released == LeftJoystickButtonEvent(arm_downl)))
+			{
+				armMotor->Set(0.0);
+			}
+		}
+		else
+		{
+			if (!armUp && ((pressed == RightJoystickButtonEvent(arm_upr)) ||
+						   (pressed == LeftJoystickButtonEvent(arm_upl))))
+			{
+				armUp = true;
+				armMotor->Set(0.2);
+			}
+			else if (armUp && ((pressed == RightJoystickButtonEvent(arm_downr)) ||
+					   	   	   (pressed == LeftJoystickButtonEvent(arm_downl))))
+			{
+				armUp = false;
+				armMotor->Set(-0.2);
 			}
 		}
 	}
@@ -659,13 +680,13 @@ public:
 		Joystick *currentJoystick = m_ds->GetDigitalIn(DS_LEFT_OR_RIGHT_STICK) ?
 													   rightJoystick : leftJoystick;
 
-		if (EitherJoystickButtonEventPressed(SHIFTER_BUTTON) && high_gear)
+		if ((pressed == LeftJoystickButtonEvent(shiftl)) || (pressed == RightJoystickButtonEvent(shiftr)) && high_gear)
 		{
 			high_gear = false;
 			leftShifter->SetAngle(SHIFTER_LOW_GEAR);
 			rightShifter->SetAngle(SHIFTER_LOW_GEAR);
 		}
-		else if (EitherJoystickButtonEventPressed(SHIFTER_BUTTON) && !high_gear)
+		else if ((pressed == LeftJoystickButtonEvent(shiftl)) || (pressed == RightJoystickButtonEvent(shiftr)) && high_gear)
 		{
 			high_gear = true;
 			leftShifter->SetAngle(SHIFTER_HIGH_GEAR);
@@ -1636,8 +1657,19 @@ public:
 	}
 
 	// Main loop
+	void TmpOperatorControl(void)
+	{
+		robotDrive->SetSafetyEnabled(true);
+		while (IsOperatorControl())
+		{
+			robotDrive->ArcadeDrive(leftJoystick); // drive with arcade style (use right stick)
+			Wait(0.005);				// wait for a motor update time
+		}
+	}
+
 	void OperatorControl(void)
 	{
+		robotDrive->SetSafetyEnabled(true);
 		// Call once to initialize current states. First call in loop should get
 		// same current states thus setting all previous equal to current and off
 		// we go...
@@ -1676,6 +1708,7 @@ public:
 
 			// Drive the robot
 			HandleDriverInputs();
+			//robotDrive->ArcadeDrive(leftJoystick);
 
 			// Handle camera position change requests
 			//HandleCameraServo();
@@ -1683,30 +1716,30 @@ public:
 			// Process the shooter button and joystick inputs. This will result
 			if(m_debug)
 			{
-				TestShooterInputs();
+				//TestShooterInputs();
 			}
 			else
 			{
-				HandleShooterInputs();
+				//HandleShooterInputs();
 			}
 
 			// Handle the collection of balls from the floor automatically
 			if(m_debug)
 			{
-				TestBallCollector();
+				//TestBallCollector();
 			}
 			else
 			{
-				RunBallCollectorStateMachine();
+				//RunBallCollectorStateMachine();
 			}
 
 			// Display the number of balls we are carrying on an display
 			// on the outside of the robot
-			DisplayCollectedBallCount();
+			//DisplayCollectedBallCount();
 
 			// Gather up all the data to be sent to the driver station
 			// and update the driver station LCD
-			UpdateDriverStation();
+			//UpdateDriverStation();
 		}
 	}
 
@@ -1814,3 +1847,5 @@ public:
 		//myRobot.Drive(0.0, 0.0); 	// stop robot
 	}
 };
+
+START_ROBOT_CLASS(Robot2012);
