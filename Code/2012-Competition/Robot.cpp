@@ -670,13 +670,13 @@ public:
 						   (pressed == LeftJoystickButtonEvent(arm_upl))))
 			{
 				armUp = true;
-				armMotor->Set(0.2);
+				armMotor->Set(1.0);
 			}
 			else if (armUp && ((pressed == RightJoystickButtonEvent(arm_downr)) ||
 					   	   	   (pressed == LeftJoystickButtonEvent(arm_downl))))
 			{
 				armUp = false;
-				armMotor->Set(-0.2);
+				armMotor->Set(-1.0);
 			}
 		}
 	}
@@ -693,7 +693,7 @@ public:
 			leftShifter->SetAngle(SHIFTER_LOW_GEAR);
 			rightShifter->SetAngle(SHIFTER_LOW_GEAR);
 		}
-		else if ((pressed == LeftJoystickButtonEvent(shiftl)) || (pressed == RightJoystickButtonEvent(shiftr)) && high_gear)
+		else if ((pressed == LeftJoystickButtonEvent(shiftl)) || (pressed == RightJoystickButtonEvent(shiftr)) && !high_gear)
 		{
 			high_gear = true;
 			leftShifter->SetAngle(SHIFTER_HIGH_GEAR);
@@ -792,6 +792,9 @@ public:
 
 	void HandleShooterInputs(void)
 	{
+		// Handle the turret joystick
+		shooterAzimuthMotor->Set(gamepad->GetLeftY());
+		
 		// Handle buttons 1 through 4 (manual mode distance base and shoot
 		// button)
 		if (pressed == GamepadButtonEvent(low))
@@ -1116,7 +1119,7 @@ public:
 
 	void RunBallCollectorStateMachine(void)
 	{
-		dsLCD->PrintfLine(DriverStationLCD::kUser_Line5, "1:%d,2:%d,3:%d,4:%d", switch_1->GetTriggerState(), switch_2->GetTriggerState(), switch_3->GetTriggerState(), switch_4->GetTriggerState());
+		//dsLCD->PrintfLine(DriverStationLCD::kUser_Line5, "1:%d,2:%d,3:%d,4:%d", switch_1->GetTriggerState(), switch_2->GetTriggerState(), switch_3->GetTriggerState(), switch_4->GetTriggerState());
 		dsLCD->UpdateLCD();
 		if(pressed == CollectorSwitchEvent(s1)) // switch 1
 		{
@@ -1693,6 +1696,8 @@ public:
 
 	void OperatorControl(void)
 	{
+		leftShifter->SetAngle(40);
+		leftShifter->SetAngle(40);
 		robotDrive->SetSafetyEnabled(true);
 		// Call once to initialize current states. First call in loop should get
 		// same current states thus setting all previous equal to current and off
@@ -1718,6 +1723,7 @@ public:
 
 		while (IsOperatorControl())
 		{
+			dsLCD->PrintfLine(DriverStationLCD::kUser_Line2, "l:%d r:%d", leftShifter->GetAngle(), rightShifter->GetAngle());
 			// Set debug flag
 			m_debug = m_ds->GetDigitalIn(DS_DEBUG);
 
@@ -1748,8 +1754,7 @@ public:
 			}
 
 			// Handle the collection of balls from the floor automatically
-			if (false)
-//			if(m_debug)
+			if(m_debug)
 			{
 				TestBallCollector();
 			}
