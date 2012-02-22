@@ -699,7 +699,7 @@ public:
 		{
 			high_gear = true;
 			leftShifter->SetAngle(SHIFTER_HIGH_GEAR);
-			leftShifter->SetAngle(SHIFTER_HIGH_GEAR);
+			rightShifter->SetAngle(SHIFTER_HIGH_GEAR);
 		}
 
 		if (!m_ds->GetDigitalIn(DS_DRIVE_TYPE))
