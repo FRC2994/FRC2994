@@ -76,15 +76,6 @@
 // Solenoids
 #define SHOOTER_ELEVATION_SOLENOID	1
 
-// Driverstation Digital IO Assignments
-#define DRIVE_TYPE 				1
-#define ARCADE_DRIVE_JOYSTICK 	2
-#define INITIAL_POSITION_0		3
-#define INITIAL_POSITION_1		4
-#define BASKET_CHOICE_0			5
-#define BASKET_CHOICE_1			6
-#define DEBUG 					8
-
 // Gamepad (real) button assignments
 #define SHOOT 		1
 #define LOW			2
@@ -415,9 +406,9 @@ public:
 		shooterTopMotor = 		new Jaguar(TOP_SHOOTER_MOTOR);
 		shooterHelperMotor =	new Relay(SHOOTER_FEED);
 		bottomShooterEncoder = 	new Encoder(BOTTOM_SHOOTER_ENCODER_A,
-											BOTTOM_SHOOTER_ENCODER_A);
+											BOTTOM_SHOOTER_ENCODER_B);
 		topShooterEncoder = 	new Encoder(TOP_SHOOTER_ENCODER_A,
-											TOP_SHOOTER_ENCODER_A);
+											TOP_SHOOTER_ENCODER_B);
 
 		// Complete the setup of the encoders and start them
 		leftDriveEncoder->SetDistancePerPulse(DRIVE_ENCODER_DISTANCE_PER_PULSE);
