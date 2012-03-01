@@ -205,34 +205,34 @@ const shooter_table 	m_upperBasketTable[SHOOTER_TABLE_ENTRIES] =
 
 const shooter_speed m_autoShootTable[SHOOTER_HEIGHT_ARRAY_SIZE][NUM_START_POSITION] =
 {
-		{{0}, {0}, {0}},
-		{{0}, {0}, {0}},
-		{{0}, {0}, {0}},
+		{{.5,.5}, {.55,.55}, {.6,.6}},
+		{{.65,.65}, {.7,.7}, {.8,.8}},
+		{{.9,.9}, {.95,.95}, {1.0,1.0}},
 };
 
 const step_speed m_autoReverse[NUM_START_POSITION] =
 {
-		{0},
-		{0},
-		{0},
+		{.5,.5,240},
+		{.5,.5,250},
+		{.5,.5,260},
 };
 const step_speed m_autoTurnInitial[NUM_START_POSITION] =
 {
-		{0},
-		{0},
-		{0},
+		{.2,.2,250},
+		{.2,.2,240},
+		{.2,.2,230},
 };
 const step_speed m_autoToBridge[NUM_START_POSITION] =
 {
-		{0},
-		{0},
-		{0},
+		{.8,.8,400},
+		{.8,.8,390},
+		{.8,.8,380},
 };
 const step_speed m_autoTurnBridge[NUM_START_POSITION] =
 {
-		{0},
-		{0},
-		{0},
+		{.2,.2,220},
+		{.2,.2,225},
+		{.2,.2,230},
 };
 
 const DriverStationLCD::Line ballCollectorDebugLine = DriverStationLCD::kUser_Line6;
@@ -1114,6 +1114,176 @@ public:
 		}
 	}
 
+	void RunBallCollectorStateMachine_1switch(void)
+	{
+		if(pressed == CollectorSwitchEvent(s4)) // switch 4
+		{
+			PrintState(1, true);
+			if ((0 == m_ballCount) &&
+				(motor_fwd == GetMotor(m1)) &&
+				(motor_fwd == GetMotor(m2)) &&
+				(motor_fwd == GetMotor(m3)) &&
+				(motor_off == GetMotor(m4)))
+			{
+				// 0FFFO -> 1OOOO
+				m_ballCount = 1;
+				SetMotor (motor_off, m1);
+				SetMotor (motor_off, m2);
+				SetMotor (motor_off, m3);
+				PrintState(1, false);
+			}
+		}
+		if(m_shootDataReady && m_shootRequested) // switch 5
+		{
+			PrintState(1, true);
+			if ((1 == m_ballCount) &&
+				(motor_off == GetMotor(m1)) &&
+				(motor_off == GetMotor(m2)) &&
+				(motor_off == GetMotor(m3)) &&
+				(motor_off == GetMotor(m4)))
+			{
+			// 1OOOO -> 0OOFF
+			m_ballCount = 0;
+			SetMotor (motor_fwd, m3);
+			SetMotor (motor_fwd, m4);
+			PrintState(1, false);
+			}
+		}
+		if(true == ballCollectorTimer->HasPeriodPassed(SHOOTER_TIMEOUT)) // switch 6
+		{
+			PrintState(1, true);
+			if ((0 == m_ballCount) &&
+				(motor_off == GetMotor(m1)) &&
+				(motor_off == GetMotor(m2)) &&
+				(motor_fwd == GetMotor(m3)) &&
+				(motor_fwd == GetMotor(m4)))
+			{
+			SetMotor (motor_fwd, m1);
+			SetMotor (motor_fwd, m2);
+			SetMotor (motor_off, m4);
+			PrintState(1, false);
+			}
+		}
+		if(pressed == GamepadButtonEvent(enable)) // switch 7
+		{
+			PrintState(1, true);
+			if ((0 == m_ballCount) &&
+				(motor_fwd == GetMotor(m1)) &&
+			    (motor_fwd == GetMotor(m2)) &&
+			    (motor_fwd == GetMotor(m3)) &&
+			    (motor_off == GetMotor(m4)))
+			{
+				// 0FFOO -> 0OOOO
+				SetMotor (motor_off, m1);
+				SetMotor (motor_off, m2);
+				SetMotor (motor_off, m3);
+			}
+			else if ((0 == m_ballCount) &&
+					 (motor_off == GetMotor(m1)) &&
+					 (motor_off == GetMotor(m2)) &&
+					 (motor_off == GetMotor(m3)) &&
+					 (motor_off == GetMotor(m4)))
+			{
+				// 0OOOO -> 0FFFO
+				SetMotor (motor_fwd, m1);
+				SetMotor (motor_fwd, m2);
+				SetMotor (motor_fwd, m3);
+			}
+				// 0OOFF -> 0OOOO
+			else if ((0 == m_ballCount) &&
+					 (motor_off == GetMotor(m1)) &&
+					 (motor_off == GetMotor(m2)) &&
+					 (motor_fwd == GetMotor(m3)) &&
+					 (motor_fwd == GetMotor(m4)))
+			{
+				// 0OOFF -> 0OOOO
+				SetMotor (motor_off, m3);
+				SetMotor (motor_off, m4);
+			}
+			else
+			{
+				// do nothing
+			}
+			PrintState(1, false);			
+		}
+		if(pressed == GamepadButtonEvent(flush)) // switch 8
+		{
+			PrintState(8, true);
+			// XXXXXX -> F0RRRO
+			m_ballCount = 0;
+			SetMotor (motor_rev, m1);
+			SetMotor (motor_rev, m2);
+			SetMotor (motor_rev, m3);
+			SetMotor (motor_off, m4);
+			PrintState(8, false);
+		}
+
+		if(released == GamepadButtonEvent(flush))
+		{
+			PrintState(8, true);
+			// XXXXXX -> I0OOOO
+			m_ballCount = 0;
+			SetMotor (motor_off, m1);
+			SetMotor (motor_off, m2);
+			SetMotor (motor_off, m3);
+			SetMotor (motor_off, m4);
+			PrintState(8, false);
+		}
+
+	}
+	void RunBallCollectorStateMachine_3switch(void)
+	{
+		if(pressed == CollectorSwitchEvent(s2)) // switch 2
+		{
+			
+		}
+		if(pressed == CollectorSwitchEvent(s2)) // switch 3
+		{
+			
+		}
+		if(pressed == CollectorSwitchEvent(s2)) // switch 4
+		{
+			
+		}
+		if(m_shootDataReady && m_shootRequested) // switch 5
+		{
+			
+		}
+		if(true == ballCollectorTimer->HasPeriodPassed(SHOOTER_TIMEOUT)) // switch 6
+		{
+			
+		}
+		if(pressed == GamepadButtonEvent(enable)) // switch 7
+		{
+			
+		}
+		if(pressed == GamepadButtonEvent(flush)) // switch 8
+		{
+			PrintState(8, true);
+			// XXXXXX -> F0RRRO
+			m_collectorMode = F;
+			m_ballCount = 0;
+			SetMotor (motor_rev, m1);
+			SetMotor (motor_rev, m2);
+			SetMotor (motor_rev, m3);
+			SetMotor (motor_off, m4);
+			PrintState(8, false);
+		}
+
+		if(released == GamepadButtonEvent(flush))
+		{
+			PrintState(8, true);
+			// XXXXXX -> I0OOOO
+			m_collectorMode = I;
+			m_ballCount = 0;
+			SetMotor (motor_off, m1);
+			SetMotor (motor_off, m2);
+			SetMotor (motor_off, m3);
+			SetMotor (motor_off, m4);
+			PrintState(8, false);
+		}
+
+	}
 	void RunBallCollectorStateMachine(void)
 	{
 		//dsLCD->PrintfLine(DriverStationLCD::kUser_Line5, "1:%d,2:%d,3:%d,4:%d", switch_1->GetTriggerState(), switch_2->GetTriggerState(), switch_3->GetTriggerState(), switch_4->GetTriggerState());
@@ -1680,6 +1850,27 @@ public:
 		dsLCD->UpdateLCD();
 	}
 
+	void TestBounce (void)
+	{
+		static int pressedCount = 0;
+		static int releasedCount = 0;
+		
+		// Look for pressed event and increment count
+		if(pressed == CollectorSwitchEvent(s4)) // switch
+		{
+			pressedCount++;
+		}
+		// Look for released event and increment count
+		if(released == CollectorSwitchEvent(s4)) // switch
+		{
+			releasedCount++;
+		}
+		
+		// Read the switch state and display it plus the counts
+		dsLCD->Printf(ballCollectorDebugLine, 1, "st: %d pr: %d re: %d",
+				CollectorSwitchState(m4), pressedCount, releasedCount);
+	}
+	
 	// Main loop
 	void TmpOperatorControl(void)
 	{
@@ -1753,19 +1944,13 @@ public:
 			}
 
 			// Handle the collection of balls from the floor automatically
-			if(m_debug)
-			{
-				TestBallCollector();
-			}
-			else
-			{
-				RunBallCollectorStateMachine();
-			}
 
 			// Display the number of balls we are carrying on an display
 			// on the outside of the robot
 			//DisplayCollectedBallCount();
 
+			TestBounce();
+			
 			// Gather up all the data to be sent to the driver station
 			// and update the driver station LCD
 			UpdateDriverStation();
@@ -1778,19 +1963,28 @@ public:
 		dsLCD->UpdateLCD();
 	}
 
-	void DoAutonomousMoveStep(const step_speed speeds[NUM_START_POSITION], const start_positions initial, char * message)
+	void DoAutonomousMoveStep(const step_speed *speeds, const start_positions initial, char * message)
 	{
+		leftDriveEncoder->Reset();
+
 		ClearDSLine(DriverStationLCD::kUser_Line2);
-		dsLCD->PrintfLine(DriverStationLCD::kUser_Line2, "%s", message);
+		dsLCD->PrintfLine(DriverStationLCD::kUser_Line2, "i: %d %s", initial, message);
 		dsLCD->UpdateLCD();
 		driveLeftMotor->Set(speeds[initial].speed_left);
 		driveRightMotor->Set(speeds[initial].speed_right);
-		float dist = speeds[initial].distance;
-		while (dist < leftDriveEncoder->GetDistance())
+		double dist = speeds[initial].distance;
+		dsLCD->PrintfLine(DriverStationLCD::kUser_Line5, "d:%5.2f e:%5.2f", dist, leftDriveEncoder->GetDistance());
+		dsLCD->UpdateLCD();
+
+		while (dist > leftDriveEncoder->GetDistance())
 		{
+			dsLCD->PrintfLine(DriverStationLCD::kUser_Line5, "d:%5.2f e:%5.2f", dist, leftDriveEncoder->GetDistance());
+			dsLCD->UpdateLCD();
 			Wait(0.01);
 		}
-		leftDriveEncoder->Reset();
+		driveLeftMotor->Set(0.0);
+		driveRightMotor->Set(0.0);
+
 	}
 
 	void Autonomous(void)
@@ -1839,10 +2033,13 @@ public:
 
 
 		dsLCD->PrintfLine(DriverStationLCD::kUser_Line2, "Shooting...");
+		dsLCD->PrintfLine(DriverStationLCD::kUser_Line3, "p: %d b: %d d:%5.2f", position, which_basket, shootDelay);
+		
 		dsLCD->UpdateLCD();
 
 		// Shoot two balls
 		Wait(shootDelay);
+		dsLCD->PrintfLine(DriverStationLCD::kUser_Line4, "bot: %5.2f",m_autoShootTable[which_basket][position].speed_bottom);
 		shooterBottomMotor->Set(m_autoShootTable[which_basket][position].speed_bottom);
 		shooterTopMotor->Set(m_autoShootTable[which_basket][position].speed_top);
 		shooterHelperMotor->Set(Relay::kForward);
