@@ -76,15 +76,6 @@
 // Solenoids
 #define SHOOTER_ELEVATION_SOLENOID	1
 
-// Driverstation Digital IO Assignments
-#define DRIVE_TYPE 				1
-#define ARCADE_DRIVE_JOYSTICK 	2
-#define INITIAL_POSITION_0		3
-#define INITIAL_POSITION_1		4
-#define BASKET_CHOICE_0			5
-#define BASKET_CHOICE_1			6
-#define DEBUG 					8
-
 // Gamepad (real) button assignments
 #define SHOOT 		1
 #define LOW			2
@@ -190,26 +181,26 @@ typedef struct
 } step_speed;
 
 const shooter_table m_lowerBasketTable[SHOOTER_TABLE_ENTRIES] =
-		{{5.0, 0.4, 0.4, 0, 0},
-		 {10.0, 0.4, 0.4, 0, 0},
-		 {15.0, 0.4, 0.4, 0, 0},
-		 {20.0, 0.4, 0.4, 0, 0},
-		 {25.0, 0.4, 0.4, 0, 0},
+		{{5.0, 0.45, 0.45, 0, 0},  // measured
+		 {10.0, 0.45, 0.45, 0, 0},
+		 {15.0, 0.45, 0.45, 0, 0},
+		 {20.0, 0.45, 0.45, 0, 0},
+		 {25.0, 0.45, 0.45, 0, 0},
 		};
 const shooter_table 	m_middleBasketTable[SHOOTER_TABLE_ENTRIES] =
-		{{5.0, 0.4, 0.4, 0, 0},
-		 {10.0, 0.4, 0.4, 0, 0},
-		 {15.0, 0.4, 0.4, 0, 0},
-		 {20.0, 0.4, 0.4, 0, 0},
-		 {25.0, 0.4, 0.4, 0, 0},
+		{{5.0, 0.55, 0.55, 0, 0},  // measured
+		 {10.0, 0.60, 0.60, 0, 0}, // measured
+		 {15.0, 0.70, 0.70, 0, 0}, 
+		 {20.0, 0.80, 0.80, 0, 0}, // measured
+		 {25.0, 0.90, 0.90, 0, 0},
 		};
 
 const shooter_table 	m_upperBasketTable[SHOOTER_TABLE_ENTRIES] =
-		{{5.0, 0.4, 0.4, 0, 0},
-		 {10.0, 0.4, 0.4, 0, 0},
-		 {15.0, 0.4, 0.4, 0, 0},
-		 {20.0, 0.4, 0.4, 0, 0},
-		 {25.0, 0.4, 0.4, 0, 0},
+		{{5.0, 0.60, 0.60, 0, 0},
+		 {10.0, 0.70, 0.70, 0, 0}, // measured
+		 {15.0, 0.75, 0.75, 0, 0}, // measured
+		 {20.0, 0.875, 0.875, 0, 0},
+		 {25.0, 1.00, 1.00, 0, 0}, // measured
 		};
 
 const shooter_speed m_autoShootTable[SHOOTER_HEIGHT_ARRAY_SIZE][NUM_START_POSITION] =
@@ -273,7 +264,8 @@ class Robot2012 : public SimpleRobot
 	Encoder 		*topShooterEncoder;
 //	Encoder 		*shooterAzimuthEncoder;
 	MBUltrasonic 	*ultrasonicSensor;
-	DigitalOutput 	*cameraLight;
+	Solenoid 	*cameraLight1;
+	Solenoid 	*cameraLight2;
 
 	// Motor Controllers
 	Jaguar *driveLeftMotor;
@@ -304,7 +296,7 @@ class Robot2012 : public SimpleRobot
 	DriverStation 		*ds;
 	Timer 				*ballCollectorTimer;
 	Compressor			*compressor;
-	Solenoid			*shooterElevationValve;
+	//			*shooterElevationValve;
 	Timer				*cameraTimer;
 	Timer				*ultrasonicTimer;
 
@@ -414,9 +406,9 @@ public:
 		shooterTopMotor = 		new Jaguar(TOP_SHOOTER_MOTOR);
 		shooterHelperMotor =	new Relay(SHOOTER_FEED);
 		bottomShooterEncoder = 	new Encoder(BOTTOM_SHOOTER_ENCODER_A,
-											BOTTOM_SHOOTER_ENCODER_A);
+											BOTTOM_SHOOTER_ENCODER_B);
 		topShooterEncoder = 	new Encoder(TOP_SHOOTER_ENCODER_A,
-											TOP_SHOOTER_ENCODER_A);
+											TOP_SHOOTER_ENCODER_B);
 
 		// Complete the setup of the encoders and start them
 		leftDriveEncoder->SetDistancePerPulse(DRIVE_ENCODER_DISTANCE_PER_PULSE);
@@ -440,7 +432,7 @@ public:
 		topShooterEncoder->Start();
 
 		// Solenoid(s)
-		shooterElevationValve =	new Solenoid (SHOOTER_ELEVATION_SOLENOID);
+		//shooterElevationValve =	new Solenoid (SHOOTER_ELEVATION_SOLENOID);
 
 		// Driver station I/O
 		ds = 	DriverStation::GetInstance();
@@ -449,7 +441,8 @@ public:
 
 		// Miscellaneous
 		compressor = 		new Compressor(PNEUMATIC_PRESSURE_SWITCH, COMPRESSOR);
-		cameraLight = 		new DigitalOutput(CAMERA_LIGHT_ENABLE);
+		cameraLight1 = 		new Solenoid(1);
+		cameraLight2 = 		new Solenoid(2);
 		cameraTimer = 		new Timer();
 		ultrasonicTimer = 	new Timer();
  		ultrasonicSensor =  new MBUltrasonic(ULTRASONIC_PING,
@@ -676,7 +669,7 @@ public:
 					   	   	   (pressed == LeftJoystickButtonEvent(arm_downl))))
 			{
 				armUp = false;
-				armMotor->Set(-1.0);
+				armMotor->Set(-0.2);
 			}
 		}
 	}
@@ -697,7 +690,7 @@ public:
 		{
 			high_gear = true;
 			leftShifter->SetAngle(SHIFTER_HIGH_GEAR);
-			leftShifter->SetAngle(SHIFTER_HIGH_GEAR);
+			rightShifter->SetAngle(SHIFTER_HIGH_GEAR);
 		}
 
 		if (!m_ds->GetDigitalIn(DS_DRIVE_TYPE))
@@ -727,7 +720,7 @@ public:
 							  ((Servo::GetMaxAngle() - Servo::GetMinAngle()) / 2.0); 
 			}
 
-			joystickPosition = gamepad->GetRightX();
+			joystickPosition = gamepad->GetRightY();
 
 			if (joystickPosition > 0.5)
 			{
@@ -780,7 +773,7 @@ public:
 			}
 			else if (ds->GetDigitalIn(DS_USE_VISION_DISTANCE))
 			{
-				cameraLight->Set(true);
+				//cameraLight->Set(true);
 				table->PutBoolean("getDistance", true);
 			}
 			else
@@ -799,7 +792,7 @@ public:
 		// button)
 		if (pressed == GamepadButtonEvent(low))
 		{
-			m_targetBasketHeight = basket_low;
+			//m_targetBasketHeight = basket_low;
 			m_distance = SHORT_DISTANCE;
 			m_shootDataReady = true;
 			m_shootMode = manual;
@@ -807,7 +800,7 @@ public:
 
 		if (pressed == GamepadButtonEvent(medium))
 		{
-			m_targetBasketHeight = basket_medium;
+			//m_targetBasketHeight = basket_medium;
 			m_distance = MEDIUM_DISTANCE;
 			m_shootDataReady = true;
 			m_shootMode = manual;
@@ -815,7 +808,7 @@ public:
 
 		if (pressed == GamepadButtonEvent(high))
 		{
-			m_targetBasketHeight = basket_high;
+			//m_targetBasketHeight = basket_high;
 			m_distance = LONG_DISTANCE;
 			m_shootDataReady = true;
 			m_shootMode = manual;
@@ -850,21 +843,25 @@ public:
 		// Handle the DPad buttons (automatic mode basket select)
 		if (pressed == GamepadButtonEvent(basket_top))
 		{
+			m_targetBasketHeight = basket_high; // for manual mode
 			MakeAutoDistanceRequest(basket_high);
 		}
 
 		if (pressed == GamepadButtonEvent(basket_left))
 		{
+			m_targetBasketHeight = basket_medium; // for manual mode
 			MakeAutoDistanceRequest(basket_medium);
 		}
 
 		if (pressed == GamepadButtonEvent(basket_right))
 		{
+			m_targetBasketHeight = basket_medium; // for manual mode
 			MakeAutoDistanceRequest(basket_medium);
 		}
 
 		if (pressed == GamepadButtonEvent(basket_bottom))
 		{
+			m_targetBasketHeight = basket_low; // for manual mode
 			MakeAutoDistanceRequest(basket_low);
 		}
 		
@@ -872,14 +869,14 @@ public:
 		{
 			dsLCD->PrintfLine(DriverStationLCD::kUser_Line2,"Setting up");
 			m_shooterElevationUp = true;
-			shooterElevationValve->Set(m_shooterElevationUp);
+			//shooterElevationValve->Set(m_shooterElevationUp);
 		}
 		else if ((pressed == GamepadButtonEvent(elevation)) && m_shooterElevationUp)
 		{
 			dsLCD->PrintfLine(DriverStationLCD::kUser_Line2,"Setting down");
 
 			m_shooterElevationUp = false;
-			shooterElevationValve->Set(m_shooterElevationUp);
+			//shooterElevationValve->Set(m_shooterElevationUp);
 		}
 
 		// Handle outstanding vision/ultrasonic distance requests
@@ -916,7 +913,7 @@ public:
 					m_distance = table->GetDouble("distance");
 					m_shootDataReady = true;
 					m_shootDataRequested = false;
-					cameraLight->Set(false);
+					//cameraLight->Set(false);
 				}
 			}
 			else
@@ -1719,10 +1716,12 @@ public:
 
 		// Set the elevation to "down"
 		m_shooterElevationUp = false;
-		shooterElevationValve->Set(m_shooterElevationUp);
+		//shooterElevationValve->Set(m_shooterElevationUp);
 
 		while (IsOperatorControl())
 		{
+			cameraLight1->Set(true);
+			cameraLight2->Set(true);
 			dsLCD->PrintfLine(DriverStationLCD::kUser_Line2, "l:%d r:%d", leftShifter->GetAngle(), rightShifter->GetAngle());
 			// Set debug flag
 			m_debug = m_ds->GetDigitalIn(DS_DEBUG);
@@ -1741,7 +1740,7 @@ public:
 			//robotDrive->ArcadeDrive(leftJoystick);
 
 			// Handle camera position change requests
-			//HandleCameraServo();
+			HandleCameraServo();
 
 			// Process the shooter button and joystick inputs. This will result
 			if(m_debug)
