@@ -158,7 +158,7 @@ typedef enum {manual, automatic, NUM_SHOOTER_MODES} shooter_modes;
 // Structure for shooter tables
 #define SHOOTER_TABLE_ENTRIES 5  // this will have to be larger
 typedef struct {
-	float  distance;
+	int	   distance;
 	float  bottomMotorSetting;
 	float  topMotorSetting;
 	UINT32 bottomDesriedRPM;
@@ -179,26 +179,26 @@ typedef struct
 } step_speed;
 
 const shooter_table m_lowerBasketTable[SHOOTER_TABLE_ENTRIES] =
-		{{5.0, 0.45, 0.45, 0, 0},  // measured
-		 {10.0, 0.45, 0.45, 0, 0},
-		 {15.0, 0.45, 0.45, 0, 0},
-		 {20.0, 0.45, 0.45, 0, 0},
-		 {25.0, 0.45, 0.45, 0, 0},
+		{{5, 0.45, 0.45, 0, 0},  // measured
+		 {10, 0.45, 0.45, 0, 0},
+		 {15, 0.45, 0.45, 0, 0},
+		 {20, 0.45, 0.45, 0, 0},
+		 {25, 0.45, 0.45, 0, 0},
 		};
 const shooter_table 	m_middleBasketTable[SHOOTER_TABLE_ENTRIES] =
-		{{5.0, 0.55, 0.55, 0, 0},  // measured
-		 {10.0, 0.60, 0.60, 0, 0}, // measured
-		 {15.0, 0.70, 0.70, 0, 0}, 
-		 {20.0, 0.80, 0.80, 0, 0}, // measured
-		 {25.0, 0.90, 0.90, 0, 0},
+		{{5, 0.55, 0.55, 0, 0},  // measured
+		 {10, 0.60, 0.60, 0, 0}, // measured
+		 {15, 0.70, 0.70, 0, 0}, 
+		 {20, 0.80, 0.80, 0, 0}, // measured
+		 {25, 0.90, 0.90, 0, 0},
 		};
 
 const shooter_table 	m_upperBasketTable[SHOOTER_TABLE_ENTRIES] =
-		{{5.0, 0.60, 0.60, 0, 0},
-		 {10.0, 0.70, 0.70, 0, 0}, // measured
-		 {15.0, 0.75, 0.75, 0, 0}, // measured
-		 {20.0, 0.875, 0.875, 0, 0},
-		 {25.0, 1.00, 1.00, 0, 0}, // measured
+		{{5, 0.60, 0.60, 0, 0},
+		 {10, 0.70, 0.70, 0, 0}, // measured
+		 {15, 0.75, 0.75, 0, 0}, // measured
+		 {20, 0.875, 0.875, 0, 0},
+		 {25, 1.00, 1.00, 0, 0}, // measured
 		};
 
 const shooter_speed m_autoShootTable[SHOOTER_HEIGHT_ARRAY_SIZE][NUM_START_POSITION] =
@@ -316,7 +316,7 @@ class Robot2012 : public SimpleRobot
 	basket_height m_targetBasketHeight;
 	shooter_modes m_shootMode;
 
-	double 	m_distance;
+	int 	m_distance;
 	bool	m_shootDataRequested;
 	bool	m_shootDataReady;
 	bool	m_shootRequested;
@@ -765,7 +765,7 @@ public:
 			if (ds->GetDigitalIn(DS_USE_ULTRASONIC_DISTANCE) &&
 				!ds->GetDigitalIn(DS_USE_VISION_DISTANCE))
 			{
-				m_distance = ultrasonicSensor->GetRangeInches();  // toss away the result
+				m_distance = (int)ultrasonicSensor->GetRangeInches();
 			}
 			else if (ds->GetDigitalIn(DS_USE_VISION_DISTANCE))
 			{
@@ -888,7 +888,7 @@ public:
 				// distance info
 				bool dataReady = table->GetBoolean("haveDistance");
 				if (dataReady) {
-					m_distance = table->GetDouble("distance");
+					m_distance = table->GetInt("distance");
 					m_shootDataReady = true;
 					m_shootDataRequested = false;
 					cameraLight->Off();
@@ -922,7 +922,7 @@ public:
 		}
 
 		// Interpolate the shooter settings from the selected table
-		float maxDistance = basketTable_p[SHOOTER_TABLE_ENTRIES-1].distance;
+		int maxDistance = basketTable_p[SHOOTER_TABLE_ENTRIES-1].distance;
 
 		if (m_distance > maxDistance)
 		{
@@ -2166,6 +2166,10 @@ public:
 
 //			dsLCD->PrintfLine(DriverStationLCD::kUser_Line2, "l:%d r:%d", leftShifter->GetAngle(), rightShifter->GetAngle());
 
+			// Make sure ultrasonic sensor is called regularly so that when we want a distance
+			// we can get an accurate one
+			ultrasonicSensor->UpdateRangeSamples();
+			
 			// Get inputs that we need to know both current and previous state
 			GetGamepadButtons();
 			GetLeftJoystickButtons ();
