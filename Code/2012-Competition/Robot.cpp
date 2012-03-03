@@ -1157,8 +1157,8 @@ public:
 				SetMotor (motor_off, m1);
 				SetMotor (motor_off, m2);
 				SetMotor (motor_off, m3);
-				PrintState(4, false);
 			}
+			PrintState(4, false);
 		}
 		
 		if (m_shootDataReady && m_shootRequested) // switch 5
@@ -1174,8 +1174,8 @@ public:
 				m_ballCount = 0;
 				SetMotor (motor_fwd, m3);
 				SetMotor (motor_fwd, m4);
-				PrintState(5, false);
 			}
+			PrintState(5, false);
 		}
 		
 		if (true == ballCollectorTimer->HasPeriodPassed(SHOOTER_TIMEOUT)) // switch 6
@@ -1187,6 +1187,7 @@ public:
 				(motor_fwd == GetMotor(m3)) &&
 				(motor_fwd == GetMotor(m4)))
 			{
+				// 0OOFF -> 0FFFO
 				SetMotor (motor_fwd, m1);
 				SetMotor (motor_fwd, m2);
 				SetMotor (motor_off, m4);
@@ -1203,7 +1204,7 @@ public:
 			    (motor_fwd == GetMotor(m3)) &&
 			    (motor_off == GetMotor(m4)))
 			{
-				// 0FFOO -> 0OOOO
+				// 0FFFO -> 0OOOO
 				SetMotor (motor_off, m1);
 				SetMotor (motor_off, m2);
 				SetMotor (motor_off, m3);
@@ -1219,7 +1220,6 @@ public:
 				SetMotor (motor_fwd, m2);
 				SetMotor (motor_fwd, m3);
 			}
-				// 0OOFF -> 0OOOO
 			else if ((0 == m_ballCount) &&
 					 (motor_off == GetMotor(m1)) &&
 					 (motor_off == GetMotor(m2)) &&
@@ -1229,10 +1229,6 @@ public:
 				// 0OOFF -> 0OOOO
 				SetMotor (motor_off, m3);
 				SetMotor (motor_off, m4);
-			}
-			else
-			{
-				// do nothing
 			}
 			PrintState(7, false);			
 		}
@@ -1347,7 +1343,7 @@ public:
 			if ((motor_fwd == GetMotor(m3)))
 			{
 				if ((C == m_collectorMode) &&
-					(1 == m_ballCount) &&
+					(2 == m_ballCount) &&
 					(motor_fwd == GetMotor(m1)) &&
 					(motor_fwd == GetMotor(m2)) &&
 					(motor_off == GetMotor(m4)))
@@ -1356,7 +1352,7 @@ public:
 					m_collectorMode = I;
 					SetMotor (motor_off, m3);
 				}
-				if ((S == m_collectorMode) &&
+				else if ((S == m_collectorMode) &&
 					(3 == m_ballCount) &&
 					(motor_off == GetMotor(m1)) &&
 					(motor_fwd == GetMotor(m2)) &&
@@ -1369,10 +1365,10 @@ public:
 					SetMotor (motor_off, m3);
 					SetMotor (motor_off, m4);
 				}
-				if ((S == m_collectorMode) &&
+				else if ((S == m_collectorMode) &&
 					(2 == m_ballCount) &&
 					(motor_off == GetMotor(m1)) &&
-					(motor_fwd == GetMotor(m2)) &&
+					(motor_off == GetMotor(m2)) &&
 					(motor_fwd == GetMotor(m4)))
 				{
 					// S2OOFF -> I1OOOO
@@ -1381,7 +1377,7 @@ public:
 					SetMotor (motor_off, m3);
 					SetMotor (motor_off, m4);
 				}
-				if ((S == m_collectorMode) &&
+				else if ((S == m_collectorMode) &&
 					(1 == m_ballCount) &&
 					(motor_off == GetMotor(m1)) &&
 					(motor_off == GetMotor(m2)) &&
@@ -1390,9 +1386,9 @@ public:
 					// S1OOFO -> W0OOFF
 					m_collectorMode = W;
 					m_ballCount = 0;
-					SetMotor (motor_off, m4);
+					SetMotor (motor_fwd, m4);
 				}
-				if ((C == m_collectorMode) &&
+				else if ((C == m_collectorMode) &&
 					(3 == m_ballCount) &&
 					(motor_off == GetMotor(m1)) &&
 					(motor_off == GetMotor(m2)) &&
@@ -1423,7 +1419,7 @@ public:
 					SetMotor (motor_off, m2);
 					SetMotor (motor_fwd, m3);
 				}
-				if	((2 == m_ballCount) &&
+				else if	((2 == m_ballCount) &&
 					 (motor_fwd == GetMotor(m1)) &&
 					 (motor_fwd == GetMotor(m2)))
 				{
@@ -1434,7 +1430,7 @@ public:
 					SetMotor (motor_fwd, m3);
 					SetMotor (motor_fwd, m4);
 				}
-				if	((3 == m_ballCount) &&
+				else if	((3 == m_ballCount) &&
 					 (motor_off == GetMotor(m1)) &&
 					 (motor_off == GetMotor(m2)))
 				{
@@ -1444,12 +1440,13 @@ public:
 					SetMotor (motor_fwd, m3);
 					SetMotor (motor_fwd, m4);
 				}
-				if	((1 == m_ballCount) &&
+				else if	((1 == m_ballCount) &&
 					 (motor_off == GetMotor(m1)) &&
 					 (motor_off == GetMotor(m2)))
 				{
 					// I1OOOO -> W0OOFF
 					m_collectorMode = W;
+					m_ballCount = 0;
 					SetMotor (motor_fwd, m3);
 					SetMotor (motor_fwd, m4);
 				}
