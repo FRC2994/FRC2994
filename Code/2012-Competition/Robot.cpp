@@ -45,8 +45,6 @@
 #define BOTTOM_SHOOTER_ENCODER_B	6
 #define TOP_SHOOTER_ENCODER_A		7
 #define TOP_SHOOTER_ENCODER_B		8
-#define SHOOTER_AZIUMTH_ENCODER_A	9
-#define SHOOTER_AZIMUTH_ENCODER_B	10
 #define ULTRASONIC_PING				11
 #define ULTRASONIC_RX				12
 #define CAMERA_LIGHT_ENABLE			13
@@ -56,7 +54,6 @@
 #define LEFT_DRIVE_MOTOR		1
 #define RIGHT_DRIVE_MOTOR		2
 #define ARM_MOTOR				3
-#define SHOOTER_AZIMUTH_MOTOR	4
 #define BOTTOM_SHOOTER_MOTOR	5
 #define TOP_SHOOTER_MOTOR		6
 #define ELEVATION_MOTOR			7
@@ -74,7 +71,6 @@
 #define SHOOTER_FEED			7
 
 // Solenoids
-#define SHOOTER_ELEVATION_SOLENOID	1
 
 // Gamepad (real) button assignments
 #define SHOOT 		1
@@ -244,6 +240,10 @@ const double SHOOTER_TIMEOUT = 1.0;
 #define CAMERA_SERVO_BIG_INCR 	10
 #define CAMERA_SERVO_SMALL_INCR 5
 
+//----------------------------------------------------------------------------//
+//
+//----------------------------------------------------------------------------//
+
 class Robot2012 : public SimpleRobot
 {
 	// Input Devices
@@ -262,7 +262,6 @@ class Robot2012 : public SimpleRobot
 	Encoder 		*rightDriveEncoder;
 	Encoder 		*bottomShooterEncoder;
 	Encoder 		*topShooterEncoder;
-//	Encoder 		*shooterAzimuthEncoder;
 	MBUltrasonic 	*ultrasonicSensor;
 	Solenoid 	*cameraLight1;
 	Solenoid 	*cameraLight2;
@@ -273,7 +272,6 @@ class Robot2012 : public SimpleRobot
 	Jaguar *shooterBottomMotor;
 	Jaguar *shooterTopMotor;
 	Jaguar *shooterAzimuthMotor;
-//	Jaguar *shooterElevationMotor;
 	Jaguar *armMotor;
 
 	// Servos
@@ -366,6 +364,11 @@ class Robot2012 : public SimpleRobot
 	bool m_debug;
 
 public:
+
+//----------------------------------------------------------------------------//
+//
+//----------------------------------------------------------------------------//
+
 	Robot2012(void)
 	{
 
@@ -396,10 +399,6 @@ public:
 		rightShifter =		new Servo(RIGHT_SHIFT_SERVO);
 
 		// Ball shooter motors, encoders, and controls
-		shooterAzimuthMotor = 	new Jaguar(SHOOTER_AZIMUTH_MOTOR);
-//		shooterElevationMotor = new Jaguar(ELEVATION_MOTOR);
-//		shooterAzimuthEncoder = new Encoder(SHOOTER_AZIUMTH_ENCODER_A,
-//											SHOOTER_AZIMUTH_ENCODER_B);
 		cameraServo = 			new Servo(CAMERA_SERVO);
 
 		shooterBottomMotor =	new Jaguar(BOTTOM_SHOOTER_MOTOR);
@@ -432,7 +431,6 @@ public:
 		topShooterEncoder->Start();
 
 		// Solenoid(s)
-		//shooterElevationValve =	new Solenoid (SHOOTER_ELEVATION_SOLENOID);
 
 		// Driver station I/O
 		ds = 	DriverStation::GetInstance();
@@ -488,6 +486,10 @@ public:
 		robotDrive->SetExpiration(0.5);
 	}
 
+//----------------------------------------------------------------------------//
+//
+//----------------------------------------------------------------------------//
+
 	void ProcessChanges(state *current, state *previous, changes *change, int size)
 	{
 		int i = 0;
@@ -504,6 +506,10 @@ public:
 			previous[i] = current[i];
 		}
 	}
+
+//----------------------------------------------------------------------------//
+//
+//----------------------------------------------------------------------------//
 
 	void GetGamepadButtons (void)
 	{
@@ -554,15 +560,10 @@ public:
 					   GAMEPAD_ARRAY_SIZE);
 	}
 
-//	void InitLeftJoystickButtons (void)
-//	{
-//		for (int i=0; i<LEFT_JOYSTICK_ARRAY_SIZE; i++)
-//		{
-//			m_left_joystick_current[i]  = off;
-//			m_left_joystick_previous[i] = off;
-//			m_left_joystick_changes[i]  = none;
-//		}
-//	}
+//----------------------------------------------------------------------------//
+//
+//----------------------------------------------------------------------------//
+
 	void GetLeftJoystickButtons (void)
 	{
 		m_left_joystick_current[shiftl]  = 		leftJoystick->GetRawButton(SHIFTER_BUTTON) ? on : off;
@@ -581,15 +582,9 @@ public:
 					   LEFT_JOYSTICK_ARRAY_SIZE);
 	}
 
-//	void InitRightJoystickButtons (void)
-//	{
-//		for (int i=0; i<RIGHT_JOYSTICK_ARRAY_SIZE; i++)
-//		{
-//			m_right_joystick_current[i]  = off;
-//			m_right_joystick_previous[i] = off;
-//			m_right_joystick_changes[i]  = none;
-//		}
-//	}
+//----------------------------------------------------------------------------//
+//
+//----------------------------------------------------------------------------//
 
 	void GetRightJoystickButtons (void)
 	{
@@ -608,15 +603,9 @@ public:
 					   RIGHT_JOYSTICK_ARRAY_SIZE);
 	}
 
-//	void InitCollectorSwitches (void)
-//	{
-//		for (int i=0; i<COLLECTOR_SWITCH_ARRAY_SIZE; i++)
-//		{
-//			m_collector_current[i]  = off;
-//			m_collector_previous[i] = off;
-//			m_collector_changes[i]  = none;
-//		}
-//	}
+//----------------------------------------------------------------------------//
+//
+//----------------------------------------------------------------------------//
 
 	void GetCollectorSwitches(void)
 	{
@@ -631,6 +620,10 @@ public:
 					   m_collector_changes,
 					   COLLECTOR_SWITCH_ARRAY_SIZE);
 	}
+
+//----------------------------------------------------------------------------//
+//
+//----------------------------------------------------------------------------//
 
 	void HandleArm(void)
 	{
@@ -674,6 +667,10 @@ public:
 		}
 	}
 
+//----------------------------------------------------------------------------//
+//
+//----------------------------------------------------------------------------//
+
 	void HandleDriverInputs(void)
 	{
 		static bool high_gear = true;
@@ -702,6 +699,10 @@ public:
 			robotDrive->TankDrive(leftJoystick, rightJoystick);
 		}
 	}
+
+//----------------------------------------------------------------------------//
+//
+//----------------------------------------------------------------------------//
 
 	void HandleCameraServo ()
 	{
@@ -754,6 +755,10 @@ public:
 		}
 	}
 
+//----------------------------------------------------------------------------//
+//
+//----------------------------------------------------------------------------//
+
 	void MakeAutoDistanceRequest(basket_height basket)
 	{
 		if (!m_shootDataRequested)
@@ -782,6 +787,10 @@ public:
 			}
 		}
 	}
+
+//----------------------------------------------------------------------------//
+//
+//----------------------------------------------------------------------------//
 
 	void HandleShooterInputs(void)
 	{
@@ -988,6 +997,10 @@ public:
 		dsLCD->PrintfLine(DriverStationLCD::kUser_Line3, "%4.2f %4.2f %4.2f", m_distance, m_bottomShooterMotorSetting, m_topShooterMotorSetting);
 	}
 
+//----------------------------------------------------------------------------//
+//
+//----------------------------------------------------------------------------//
+
 	void TestShooterInputs ()
 	{
 		if (pressed == RightJoystickButtonEvent(shooter_top_inc))
@@ -1025,6 +1038,10 @@ public:
 			shooterHelperMotor->Set(Relay::kOff);
 		}
 	}
+
+//----------------------------------------------------------------------------//
+//
+//----------------------------------------------------------------------------//
 
 	void SetMotor(motor_states state, motors motor)
 	{
@@ -1081,10 +1098,18 @@ public:
 		}
 	}
 
+//----------------------------------------------------------------------------//
+//
+//----------------------------------------------------------------------------//
+
 	motor_states GetMotor (motors motor)
 	{
 		return m_motorState[motor];
 	}
+
+//----------------------------------------------------------------------------//
+//
+//----------------------------------------------------------------------------//
 
 	void PrintState (int switchNum,
 					 bool initial)
@@ -1099,7 +1124,6 @@ public:
 						  motorStateStrings[GetMotor(m2)],
 						  motorStateStrings[GetMotor(m3)],
 						  motorStateStrings[GetMotor(m4)]);
-//			dsLCD->PrintfLine(ballCollectorDebugLine, "%d:%d%s", switchNum, m_ballCount, collectorModeLetters[m_collectorMode]);
 		}
 		else
 		{
@@ -1110,15 +1134,18 @@ public:
 						  motorStateStrings[GetMotor(m2)],
 						  motorStateStrings[GetMotor(m3)],
 						  motorStateStrings[GetMotor(m4)]);
-//			dsLCD->Printf(ballCollectorDebugLine, 11, "%d:%d%s", switchNum, m_ballCount, collectorModeLetters[m_collectorMode]);
 		}
 	}
 
+//----------------------------------------------------------------------------//
+//
+//----------------------------------------------------------------------------//
+
 	void RunBallCollectorStateMachine_1switch(void)
 	{
-		if(pressed == CollectorSwitchEvent(s4)) // switch 4
+		if (pressed == CollectorSwitchEvent(s4)) // switch 4
 		{
-			PrintState(1, true);
+			PrintState(4, true);
 			if ((0 == m_ballCount) &&
 				(motor_fwd == GetMotor(m1)) &&
 				(motor_fwd == GetMotor(m2)) &&
@@ -1130,43 +1157,46 @@ public:
 				SetMotor (motor_off, m1);
 				SetMotor (motor_off, m2);
 				SetMotor (motor_off, m3);
-				PrintState(1, false);
+				PrintState(4, false);
 			}
 		}
-		if(m_shootDataReady && m_shootRequested) // switch 5
+		
+		if (m_shootDataReady && m_shootRequested) // switch 5
 		{
-			PrintState(1, true);
+			PrintState(5, true);
 			if ((1 == m_ballCount) &&
 				(motor_off == GetMotor(m1)) &&
 				(motor_off == GetMotor(m2)) &&
 				(motor_off == GetMotor(m3)) &&
 				(motor_off == GetMotor(m4)))
 			{
-			// 1OOOO -> 0OOFF
-			m_ballCount = 0;
-			SetMotor (motor_fwd, m3);
-			SetMotor (motor_fwd, m4);
-			PrintState(1, false);
+				// 1OOOO -> 0OOFF
+				m_ballCount = 0;
+				SetMotor (motor_fwd, m3);
+				SetMotor (motor_fwd, m4);
+				PrintState(5, false);
 			}
 		}
-		if(true == ballCollectorTimer->HasPeriodPassed(SHOOTER_TIMEOUT)) // switch 6
+		
+		if (true == ballCollectorTimer->HasPeriodPassed(SHOOTER_TIMEOUT)) // switch 6
 		{
-			PrintState(1, true);
+			PrintState(6, true);
 			if ((0 == m_ballCount) &&
 				(motor_off == GetMotor(m1)) &&
 				(motor_off == GetMotor(m2)) &&
 				(motor_fwd == GetMotor(m3)) &&
 				(motor_fwd == GetMotor(m4)))
 			{
-			SetMotor (motor_fwd, m1);
-			SetMotor (motor_fwd, m2);
-			SetMotor (motor_off, m4);
-			PrintState(1, false);
+				SetMotor (motor_fwd, m1);
+				SetMotor (motor_fwd, m2);
+				SetMotor (motor_off, m4);
 			}
+			PrintState(6, false);
 		}
-		if(pressed == GamepadButtonEvent(enable)) // switch 7
+		
+		if (pressed == GamepadButtonEvent(enable)) // switch 7
 		{
-			PrintState(1, true);
+			PrintState(7, true);
 			if ((0 == m_ballCount) &&
 				(motor_fwd == GetMotor(m1)) &&
 			    (motor_fwd == GetMotor(m2)) &&
@@ -1204,9 +1234,10 @@ public:
 			{
 				// do nothing
 			}
-			PrintState(1, false);			
+			PrintState(7, false);			
 		}
-		if(pressed == GamepadButtonEvent(flush)) // switch 8
+		
+		if (pressed == GamepadButtonEvent(flush)) // switch 8
 		{
 			PrintState(8, true);
 			// XXXXXX -> F0RRRO
@@ -1229,35 +1260,252 @@ public:
 			SetMotor (motor_off, m4);
 			PrintState(8, false);
 		}
-
 	}
+
+//----------------------------------------------------------------------------//
+//
+//----------------------------------------------------------------------------//
+	
 	void RunBallCollectorStateMachine_3switch(void)
 	{
-		if(pressed == CollectorSwitchEvent(s2)) // switch 2
+		if (pressed == CollectorSwitchEvent(s2)) // switch 2
 		{
-			
+			PrintState(2, true);
+			if ((motor_fwd == GetMotor(m1)) &&
+				(motor_fwd == GetMotor(m2)) &&
+				(motor_off == GetMotor(m4)))
+			{
+				if ((I == m_collectorMode) &&
+					(0 == m_ballCount) &&
+					(motor_off == GetMotor(m3)))
+				{
+					// I0FFOO -> C1FFFO	
+					m_collectorMode = C;
+					m_ballCount = 1;
+					SetMotor (motor_fwd, m3);
+
+				}
+				else if ((I == m_collectorMode) &&
+						(1 == m_ballCount) &&
+						(motor_off == GetMotor(m3)))
+				{
+					// I1FFOO -> C2FFFO
+					m_collectorMode = C;
+					m_ballCount = 2;
+					SetMotor (motor_fwd, m3);
+
+				}
+				else if ((C == m_collectorMode) &&
+						(1 == m_ballCount) &&
+						(motor_fwd == GetMotor(m3)))
+				{	
+					// C1FFFO -> C2FFFO
+					m_ballCount = 2;
+				}
+				else if ((I == m_collectorMode) &&
+						(2 == m_ballCount) &&
+						(motor_off == GetMotor(m3)))
+				{
+					// I2FFOO -> I3OOOO
+					m_ballCount = 3;
+					SetMotor (motor_off, m1);
+					SetMotor (motor_off, m2);
+				}
+				else if ((C == m_collectorMode) &&
+						(2 == m_ballCount) &&
+						(motor_fwd == GetMotor(m3)))
+				{
+					// C2FFFO -> C3OOFO
+					m_ballCount = 3;
+					SetMotor (motor_off, m1);
+					SetMotor (motor_off, m2);
+				}
+			}
+			PrintState(2, false);
 		}
-		if(pressed == CollectorSwitchEvent(s2)) // switch 3
+		
+		if (pressed == CollectorSwitchEvent(s3)) // switch 3
 		{
-			
+			PrintState(3, true);
+			if ((C == m_collectorMode) &&
+				(1 == m_ballCount) &&
+				(motor_fwd == GetMotor(m1)) &&
+				(motor_fwd == GetMotor(m2)) &&
+				(motor_fwd == GetMotor(m3)) &&
+				(motor_off == GetMotor(m4)))
+			{
+				// C1FFFO -> I1FFOO
+				m_collectorMode = I;
+				SetMotor (motor_off, m3);
+			}
+			PrintState(3, false);
 		}
-		if(pressed == CollectorSwitchEvent(s2)) // switch 4
+		
+		if (pressed == CollectorSwitchEvent(s4)) // switch 4
 		{
-			
+			PrintState(4, true);
+			if ((motor_fwd == GetMotor(m3)))
+			{
+				if ((C == m_collectorMode) &&
+					(1 == m_ballCount) &&
+					(motor_fwd == GetMotor(m1)) &&
+					(motor_fwd == GetMotor(m2)) &&
+					(motor_off == GetMotor(m4)))
+				{
+					// C2FFFO -> I2FFOO
+					m_collectorMode = I;
+					SetMotor (motor_off, m3);
+				}
+				if ((S == m_collectorMode) &&
+					(3 == m_ballCount) &&
+					(motor_off == GetMotor(m1)) &&
+					(motor_fwd == GetMotor(m2)) &&
+					(motor_fwd == GetMotor(m4)))
+				{
+					// S3OFFF -> I2FFOO
+					m_collectorMode = I;
+					m_ballCount = 2;
+					SetMotor (motor_fwd, m1);
+					SetMotor (motor_off, m3);
+					SetMotor (motor_off, m4);
+				}
+				if ((S == m_collectorMode) &&
+					(2 == m_ballCount) &&
+					(motor_off == GetMotor(m1)) &&
+					(motor_fwd == GetMotor(m2)) &&
+					(motor_fwd == GetMotor(m4)))
+				{
+					// S2OOFF -> I1OOOO
+					m_collectorMode = I;
+					m_ballCount = 1;
+					SetMotor (motor_off, m3);
+					SetMotor (motor_off, m4);
+				}
+				if ((S == m_collectorMode) &&
+					(1 == m_ballCount) &&
+					(motor_off == GetMotor(m1)) &&
+					(motor_off == GetMotor(m2)) &&
+					(motor_off == GetMotor(m4)))
+				{
+					// S1OOFO -> W0OOFF
+					m_collectorMode = W;
+					m_ballCount = 0;
+					SetMotor (motor_off, m4);
+				}
+				if ((C == m_collectorMode) &&
+					(3 == m_ballCount) &&
+					(motor_off == GetMotor(m1)) &&
+					(motor_off == GetMotor(m2)) &&
+					(motor_off == GetMotor(m4)))
+				{
+					// C3OOFO -> I3OOOO
+					m_collectorMode = I;
+					SetMotor (motor_off, m3);
+				}
+			}
+			PrintState(4, true);
 		}
-		if(m_shootDataReady && m_shootRequested) // switch 5
+		
+		if (m_shootDataReady && m_shootRequested) // switch 5
 		{
-			
+			PrintState(5, true);
+			if ((I == m_collectorMode) &&
+				(motor_off == GetMotor(m3)) &&
+				(motor_off == GetMotor(m4)))
+			{
+				if	((1 == m_ballCount) &&
+					 (motor_fwd == GetMotor(m1)) &&
+					 (motor_fwd == GetMotor(m2)))
+				{
+					// I1FFOO -> S1OOFO
+					m_collectorMode = S;
+					SetMotor (motor_off, m1);
+					SetMotor (motor_off, m2);
+					SetMotor (motor_fwd, m3);
+				}
+				if	((2 == m_ballCount) &&
+					 (motor_fwd == GetMotor(m1)) &&
+					 (motor_fwd == GetMotor(m2)))
+				{
+					// I2FFOO -> S2OOFF
+					m_collectorMode = S;
+					SetMotor (motor_off, m1);
+					SetMotor (motor_off, m2);
+					SetMotor (motor_fwd, m3);
+					SetMotor (motor_fwd, m4);
+				}
+				if	((3 == m_ballCount) &&
+					 (motor_off == GetMotor(m1)) &&
+					 (motor_off == GetMotor(m2)))
+				{
+					// I3OOOO -> S3OFFF
+					m_collectorMode = S;
+					SetMotor (motor_fwd, m2);
+					SetMotor (motor_fwd, m3);
+					SetMotor (motor_fwd, m4);
+				}
+				if	((1 == m_ballCount) &&
+					 (motor_off == GetMotor(m1)) &&
+					 (motor_off == GetMotor(m2)))
+				{
+					// I1OOOO -> W0OOFF
+					m_collectorMode = W;
+					SetMotor (motor_fwd, m3);
+					SetMotor (motor_fwd, m4);
+				}
+			}
+			PrintState(5, false);
 		}
-		if(true == ballCollectorTimer->HasPeriodPassed(SHOOTER_TIMEOUT)) // switch 6
+		
+		if (true == ballCollectorTimer->HasPeriodPassed(SHOOTER_TIMEOUT)) // switch 6
 		{
-			
+			PrintState(6, true);
+			if ((W == m_collectorMode) &&
+				(0 == m_ballCount) &&
+				(motor_off == GetMotor(m1)) &&
+				(motor_off == GetMotor(m2)) &&
+				(motor_fwd == GetMotor(m3)) &&
+				(motor_fwd == GetMotor(m4)))
+			{
+				// W0OOFF -> I0FFOO
+				m_collectorMode = I;
+				SetMotor (motor_fwd, m1);
+				SetMotor (motor_fwd, m2);
+				SetMotor (motor_off, m3);
+				SetMotor (motor_off, m4);
+
+			}
+			PrintState(6, false);
 		}
-		if(pressed == GamepadButtonEvent(enable)) // switch 7
+		
+		if (pressed == GamepadButtonEvent(enable)) // switch 7
 		{
-			
+			PrintState(7, true);
+			if ((I == m_collectorMode) &&
+				(0 == m_ballCount) &&
+				(motor_off == GetMotor(m1)) &&
+				(motor_off == GetMotor(m2)) &&
+				(motor_off == GetMotor(m3)) &&
+				(motor_off == GetMotor(m4)))
+			{
+				// I0OOOO -> I0FFOO
+				SetMotor (motor_fwd, m1);
+				SetMotor (motor_fwd, m2);
+			}
+			else 
+			{
+				// !I0OOOO -> I0OOOO
+				m_collectorMode = I;
+				m_ballCount = 0;
+				SetMotor (motor_off, m1);
+				SetMotor (motor_off, m2);
+				SetMotor (motor_off, m3);
+				SetMotor (motor_off, m4);
+			}
+			PrintState(7, false);
 		}
-		if(pressed == GamepadButtonEvent(flush)) // switch 8
+		
+		if (pressed == GamepadButtonEvent(flush)) // switch 8
 		{
 			PrintState(8, true);
 			// XXXXXX -> F0RRRO
@@ -1282,13 +1530,17 @@ public:
 			SetMotor (motor_off, m4);
 			PrintState(8, false);
 		}
-
 	}
+	
+//----------------------------------------------------------------------------//
+//
+//----------------------------------------------------------------------------//
+	
 	void RunBallCollectorStateMachine(void)
 	{
 		//dsLCD->PrintfLine(DriverStationLCD::kUser_Line5, "1:%d,2:%d,3:%d,4:%d", switch_1->GetTriggerState(), switch_2->GetTriggerState(), switch_3->GetTriggerState(), switch_4->GetTriggerState());
 		dsLCD->UpdateLCD();
-		if(pressed == CollectorSwitchEvent(s1)) // switch 1
+		if (pressed == CollectorSwitchEvent(s1)) // switch 1
 		{
 			PrintState(1, true);
 			if ((motor_fwd == GetMotor(m1)) &&
@@ -1409,7 +1661,7 @@ public:
 			PrintState(1, false);
 		}
 
-		if(pressed == CollectorSwitchEvent(s2)) // switch 2
+		if (pressed == CollectorSwitchEvent(s2)) // switch 2
 		{
 			PrintState(2, true);
 				if ((motor_fwd == GetMotor(m1)) &&
@@ -1467,7 +1719,7 @@ public:
 				PrintState(2, false);
 		}
 
-		if(pressed == CollectorSwitchEvent(s3)) // switch 3
+		if (pressed == CollectorSwitchEvent(s3)) // switch 3
 		{
 			PrintState(3, true);
 			if ((motor_fwd == GetMotor(m2)) &&
@@ -1532,7 +1784,7 @@ public:
 			PrintState(3, false);
 		}
 
-		if(pressed == CollectorSwitchEvent(s4)) // switch 4
+		if (pressed == CollectorSwitchEvent(s4)) // switch 4
 		{
 			PrintState(4, true);
 			if ((motor_off == GetMotor(m1)) &&
@@ -1608,7 +1860,7 @@ public:
 			PrintState(4, false);
 		}
 
-		if(m_shootDataReady && m_shootRequested) // switch 5
+		if (m_shootDataReady && m_shootRequested) // switch 5
 		{
 			PrintState(5, true);
 			m_shootRequested = false;
@@ -1688,7 +1940,7 @@ public:
 			PrintState(5, false);
 		}
 
-		if(true == ballCollectorTimer->HasPeriodPassed(SHOOTER_TIMEOUT)) // switch 6
+		if (true == ballCollectorTimer->HasPeriodPassed(SHOOTER_TIMEOUT)) // switch 6
 		{
 			PrintState(6, true);
 			if ((W == m_collectorMode) &&
@@ -1715,7 +1967,7 @@ public:
 			PrintState(6, false);
 		}
 
-		if(pressed == GamepadButtonEvent(enable)) // switch 7
+		if (pressed == GamepadButtonEvent(enable)) // switch 7
 		{
 			PrintState(7, true);
 			if ((I == m_collectorMode) &&
@@ -1771,6 +2023,10 @@ public:
 			PrintState(8, false);
 		}
 	}
+
+//----------------------------------------------------------------------------//
+//
+//----------------------------------------------------------------------------//
 
 	void TestBallCollector (void)
 	{
@@ -1830,6 +2086,12 @@ public:
 		}
 	}
 
+//----------------------------------------------------------------------------//
+//
+// Show the world our ball count on the external display
+//
+//----------------------------------------------------------------------------//
+
 	void DisplayCollectedBallCount(void)
 	{
 		int count = m_ballCount;
@@ -1842,13 +2104,20 @@ public:
 		ballDisplay_0->Set((count & 1) ? Relay::kOn : Relay::kOff);
 		ballDisplay_1->Set(((count >> 1) & 1) ? Relay::kOn : Relay::kOff);
 	}
+	
+//----------------------------------------------------------------------------//
+//
+//----------------------------------------------------------------------------//
 
-	// Show the world our ball count on the external display
 	void UpdateDriverStation(void)
 	{
 		// Put any general info here
 		dsLCD->UpdateLCD();
 	}
+
+//----------------------------------------------------------------------------//
+//
+//----------------------------------------------------------------------------//
 
 	void TestBounce (void)
 	{
@@ -1871,7 +2140,10 @@ public:
 				CollectorSwitchState(m4), pressedCount, releasedCount);
 	}
 	
-	// Main loop
+//----------------------------------------------------------------------------//
+//
+//----------------------------------------------------------------------------//
+
 	void TmpOperatorControl(void)
 	{
 		robotDrive->SetSafetyEnabled(true);
@@ -1881,6 +2153,10 @@ public:
 			Wait(0.005);				// wait for a motor update time
 		}
 	}
+
+//----------------------------------------------------------------------------//
+//
+//----------------------------------------------------------------------------//
 
 	void OperatorControl(void)
 	{
@@ -1909,6 +2185,10 @@ public:
 		m_shooterElevationUp = false;
 		//shooterElevationValve->Set(m_shooterElevationUp);
 
+		//----------------------------------------------------------------------------//
+		// Main loop
+		//----------------------------------------------------------------------------//
+
 		while (IsOperatorControl())
 		{
 			cameraLight1->Set(true);
@@ -1928,28 +2208,37 @@ public:
 
 			// Drive the robot
 			HandleDriverInputs();
-			//robotDrive->ArcadeDrive(leftJoystick);
 
 			// Handle camera position change requests
 			HandleCameraServo();
 
-			// Process the shooter button and joystick inputs. This will result
+			// Process the shooter button and joystick inputs.
 			if(m_debug)
 			{
+				TestBallCollector();
 				TestShooterInputs();
 			}
 			else
 			{
+				RunBallCollectorStateMachine();
 				HandleShooterInputs();
 			}
 
 			// Handle the collection of balls from the floor automatically
+			if(m_debug)
+			{
+				TestBallCollector();
+			}
+			else
+			{
+				RunBallCollectorStateMachine();
+				//RunBallCollectorStateMachine_1switch();
+				//RunBallCollectorStateMachine_3switch();
+			}
 
 			// Display the number of balls we are carrying on an display
 			// on the outside of the robot
 			//DisplayCollectedBallCount();
-
-			TestBounce();
 			
 			// Gather up all the data to be sent to the driver station
 			// and update the driver station LCD
@@ -1957,11 +2246,19 @@ public:
 		}
 	}
 
+//----------------------------------------------------------------------------//
+//
+//----------------------------------------------------------------------------//
+
 	void ClearDSLine(DriverStationLCD::Line line)
 	{
 		dsLCD->PrintfLine(line, "                    ");
 		dsLCD->UpdateLCD();
 	}
+
+//----------------------------------------------------------------------------//
+//
+//----------------------------------------------------------------------------//
 
 	void DoAutonomousMoveStep(const step_speed *speeds, const start_positions initial, char * message)
 	{
@@ -1986,6 +2283,10 @@ public:
 		driveRightMotor->Set(0.0);
 
 	}
+
+//----------------------------------------------------------------------------//
+//
+//----------------------------------------------------------------------------//
 
 	void Autonomous(void)
 	{
@@ -2068,9 +2369,6 @@ public:
 
 		// - are we in kinect mode? (digital IO ??)
 
-		//myRobot.Drive(0.5, 0.0); 	// drive forwards half speed
-		//Wait(2.0); 				//    for 2 seconds
-		//myRobot.Drive(0.0, 0.0); 	// stop robot
 	}
 };
 
