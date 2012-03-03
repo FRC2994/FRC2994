@@ -12,6 +12,7 @@
 #include "SensorBase.h"
 #include "Task.h"
 #include "PIDSource.h"
+#include "Timer.h"
 
 class Counter;
 class DigitalInput;
@@ -56,6 +57,9 @@ public:
 	bool IsRangeValid();
 	double GetRangeInches();
 	double GetRangeMM();
+	double GetRawRangeInches();
+	double GetRawRangeMM();
+	void UpdateRangeSamples();
 	
 	double PIDGet();
 	void SetDistanceUnits(DistanceUnit units);
@@ -64,18 +68,22 @@ public:
 private:
 	void Initialize();
 
-	double raw_range[10];
-	int pos;
-	
 	static const double kPingTime = 10 * 1e-6;	///< Time (sec) for the ping trigger pulse.
 	static const double kMaxUltrasonicTime = 0.1;	///< Max time (ms) between readings.
 	static const double kSpeedOfSoundInchesPerSec = 1130.0 * 12.0;
+	static const double kRangePeriod = 1/20;	// Minimum time between range requests.
+	static const UINT32 kNumSamples = 9;			// Number of samples needed to filter m_rawRange
 
 	DigitalInput *m_echoChannel;
 	DigitalOutput *m_pingChannel;
 	bool m_allocatedChannels;
 	bool m_pingEnabled;
 	Counter *m_counter;
+	Timer *m_sampleTimer;
+	
+	double m_rawRange[10];
+	UINT32 m_sampleCount;
+	double m_medianRange;
 	
 	DistanceUnit m_units;
 };

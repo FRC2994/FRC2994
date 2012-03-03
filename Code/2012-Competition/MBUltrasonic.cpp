@@ -30,6 +30,11 @@ void MBUltrasonic::Initialize()
 	m_counter->SetSemiPeriodMode(true);
 	m_counter->Reset();
 	m_counter->Start();
+	
+	m_sampleTimer = new Timer();	// Timer to gather range samples at regular intervals.
+	
+	m_medianRange = 0;				// Initially, set median of latest samples to 0 inches.
+	m_sampleCount = 0;				// Initially, no samples.
 }
 
 /**
@@ -122,6 +127,14 @@ MBUltrasonic::~MBUltrasonic()
 		delete m_pingChannel;
 		delete m_echoChannel;
 	}
+	
+	if (m_counter) {
+		delete m_counter;
+	}
+	
+	if (m_sampleTimer) {
+		delete m_sampleTimer;
+	}
 
   }
 
@@ -135,8 +148,15 @@ MBUltrasonic::~MBUltrasonic()
 void MBUltrasonic::PingEnable(bool enable)
 {
 	m_pingEnabled = enable;
-	m_counter->Reset(); // reset the counter to zero (invalid data now)
-	m_pingChannel->Set(1); // Set RCVR high, enabling repetitive pinging.
+	if (enable) {
+		m_counter->Reset(); // reset the counter to zero (invalid data now)
+		m_sampleTimer->Start();
+		m_pingChannel->Set(1); // Set RCVR high, enabling repetitive pinging.
+	} else {
+		m_counter->Reset(); // reset the counter to zero (invalid data now)
+		m_sampleTimer->Stop();
+		m_pingChannel->Set(0); // Set RCVR low, disabling repetitive pinging.
+	}
 }
 
 /**
@@ -149,38 +169,16 @@ bool MBUltrasonic::IsRangeValid()
 	return m_counter->Get() > 1;
 }
 
-int double_compare(const void *one, const void *two)
-{
-	return (int)(*((double*)one) - *((double*)two));
-}
-
-double median(double buffer[NUM_SAMPLES])
-{
-	qsort(buffer, NUM_SAMPLES, sizeof(double), double_compare);
-	return buffer[NUM_SAMPLES/2];
-}
 
 /**
- * Get the range in inches from the MBUltrasonic sensor.
+ * Get the range in inches directly from the MBUltrasonic sensor.
  * @return double Range in inches of the target returned from the MBUltrasonic sensor. If there is
- * no valid value yet, i.e. at least one measurement hasn't completed, then return 0.
+ * no valid value yet, i.e. ranging isn't enabled, then return 0.
  */
-double MBUltrasonic::GetRangeInches()
+double MBUltrasonic::GetRawRangeInches()
 {
 	if (IsRangeValid())
-	{
-		// Add onto the buffer at array index count.
-		if (pos < NUM_SAMPLES)
-		{
-			raw_range[pos++] = m_counter->GetPeriod() * kSpeedOfSoundInchesPerSec / 2.0;
-			return -0.1;
-		}
-		else
-		{
-			pos = 0;
-			return median(raw_range);
-		}
-	}
+			return m_counter->GetPeriod() * kSpeedOfSoundInchesPerSec / 2.0;
 	else
 		return 0;
 }
@@ -188,7 +186,89 @@ double MBUltrasonic::GetRangeInches()
 /**
  * Get the range in millimeters from the MBUltrasonic sensor.
  * @return double Range in millimeters of the target returned by the MBUltrasonic sensor.
- * If there is no valid value yet, i.e. at least one measurement hasn't complted, then return 0.
+ * If there is no valid value yet, i.e. ranging isn't enabled, then return 0.
+ */
+double MBUltrasonic::GetRawRangeMM()
+{
+	return GetRawRangeInches() * 25.4;
+}
+
+/**
+ * Compare two doubles.
+ * This is a helper function for UpdateRangeSamples, which
+ * calls qsort.
+ * @return int Difference between parameters; positive if one > two.
+ * @param one The first double to compare.
+ * @param two The second double to compare.
+ */
+int double_compare(const void *one, const void *two)
+{
+	return (int)(*((double*)one) - *((double*)two));
+}
+
+/**
+ * Update array of range samples.
+ * The raw range values are prone to transient
+ * high/low values, so we need to filter them.
+ * Currently, we only calculate the median of the last
+ * kNumSamples.
+ * This function is called repeatedly in the main loop,
+ * and we use a timer to throttle how quickly we gather
+ * raw samples.  Once we have enough samples, we calculate
+ * the median and store the value, which can be retrieved
+ * with GetRangeInches or getRangeMM.
+ * @return void
+ */
+void MBUltrasonic::UpdateRangeSamples()
+{
+	// Only update samples if it has been
+	// more than kRangePeriod since the last
+	// update.
+	if (!m_sampleTimer->HasPeriodPassed(kRangePeriod)) {
+		return;
+	}
+	
+	// Store the current raw range value in the array.
+	// Only increment m_sampleCount after using it
+	// as the array index.  That way, first sample
+	// goes in entry 0, second in entry 1, etc.
+	m_rawRange[m_sampleCount] = m_counter->GetPeriod() * kSpeedOfSoundInchesPerSec / 2.0;
+	m_sampleCount++;
+	
+	// We need a number of samples collected
+	// at regular intervals to do our filtering.
+	// If we have enough samples, filter the
+	// data in m_rawRange.
+	if (m_sampleCount >= kNumSamples) {
+		m_sampleCount = 0;
+		qsort(m_rawRange, kNumSamples, sizeof(double), double_compare);
+		m_medianRange = m_rawRange[kNumSamples/2];
+	}
+	
+	// Wait kRangePeriod before adding another sample.
+	m_sampleTimer->Reset();
+}
+
+/**
+ * Get the range in inches from the MBUltrasonic sensor.
+ * The value returned is filtered to exclude transient high/low values.
+ * @return double Range in inches of the target returned by the MBUltrasonic sensor.
+ * If there is no valid value yet, i.e. ranging is not enabled, then return 0.
+ */
+
+double MBUltrasonic::GetRangeInches()
+{
+	if (IsRangeValid())
+		return m_medianRange;
+	else
+		return 0;
+}
+
+/**
+ * Get the range in millimeters from the MBUltrasonic sensor.
+ * The value returned is filtered to exclude transient high/low values.
+ * @return double Range in millimeters of the target returned by the MBUltrasonic sensor.
+ * If there is no valid value yet, i.e. ranging is not enabled, then return 0.
  */
 double MBUltrasonic::GetRangeMM()
 {

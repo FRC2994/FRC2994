@@ -127,7 +127,6 @@
 #define ARM_WAIT		1.0
 
 // Distance measuring
-#define ULTRASONIC_DELAY 0.050
 #define MANUAL_DIST_SMALL_INCREMENT	1
 #define MANUAL_DIST_BIG_INCREMENT	5
 
@@ -296,7 +295,6 @@ class Robot2012 : public SimpleRobot
 	Compressor			*compressor;
 	//			*shooterElevationValve;
 	Timer				*cameraTimer;
-	Timer				*ultrasonicTimer;
 
 	// Ball collector Motors
 	motor_states m_motorState[NUM_BALL_COLLECTOR_MOTORS];
@@ -320,7 +318,6 @@ class Robot2012 : public SimpleRobot
 	bool	m_shootDataRequested;
 	bool	m_shootDataReady;
 	bool	m_shootRequested;
-	UINT32  m_ultrasonicDownCount;
 	NetworkTable *table;
 
 	float  	m_shooterBottomScaleFactor;
@@ -442,7 +439,6 @@ public:
 		cameraLight1 = 		new Solenoid(1);
 		cameraLight2 = 		new Solenoid(2);
 		cameraTimer = 		new Timer();
-		ultrasonicTimer = 	new Timer();
  		ultrasonicSensor =  new MBUltrasonic(ULTRASONIC_PING,
 											 ULTRASONIC_RX);
 		ballDisplay_0 = 	new Relay (BALL_DISPLAY_0);
@@ -469,7 +465,6 @@ public:
 		m_shootDataReady	 	= false;
 		m_shootRequested	 	= false;
 		m_shootMode			 	= manual;
-		m_ultrasonicDownCount	= 0;
 		table = NetworkTable::GetTable("2994_table");
 		
 		m_ballCount				= 0;
@@ -770,11 +765,7 @@ public:
 			if (ds->GetDigitalIn(DS_USE_ULTRASONIC_DISTANCE) &&
 				!ds->GetDigitalIn(DS_USE_VISION_DISTANCE))
 			{
-				m_ultrasonicDownCount = NUM_SAMPLES;
-				ultrasonicSensor->PingEnable(true);
-				ultrasonicSensor->GetRangeInches();  // toss away the result
-				ultrasonicSensor->PingEnable(false);
-				m_ultrasonicDownCount--;
+				m_distance = ultrasonicSensor->GetRangeInches();  // toss away the result
 			}
 			else if (ds->GetDigitalIn(DS_USE_VISION_DISTANCE))
 			{
@@ -853,25 +844,25 @@ public:
 		if (pressed == GamepadButtonEvent(basket_top))
 		{
 			m_targetBasketHeight = basket_high; // for manual mode
-			MakeAutoDistanceRequest(basket_high);
+			//MakeAutoDistanceRequest(basket_high);
 		}
 
 		if (pressed == GamepadButtonEvent(basket_left))
 		{
 			m_targetBasketHeight = basket_medium; // for manual mode
-			MakeAutoDistanceRequest(basket_medium);
+			//MakeAutoDistanceRequest(basket_medium);
 		}
 
 		if (pressed == GamepadButtonEvent(basket_right))
 		{
 			m_targetBasketHeight = basket_medium; // for manual mode
-			MakeAutoDistanceRequest(basket_medium);
+			//MakeAutoDistanceRequest(basket_medium);
 		}
 
 		if (pressed == GamepadButtonEvent(basket_bottom))
 		{
 			m_targetBasketHeight = basket_low; // for manual mode
-			MakeAutoDistanceRequest(basket_low);
+			//MakeAutoDistanceRequest(basket_low);
 		}
 		
 		if (!m_shooterElevationUp && (pressed == GamepadButtonEvent(elevation)))
@@ -891,29 +882,7 @@ public:
 		// Handle outstanding vision/ultrasonic distance requests
 		if (m_shootDataRequested)
 		{
-			if (ds->GetDigitalIn(DS_USE_ULTRASONIC_DISTANCE) &&
-				!ds->GetDigitalIn(DS_USE_VISION_DISTANCE))
-			{
-
-				if (m_ultrasonicDownCount > 0)
-				{
-					if (ultrasonicTimer->HasPeriodPassed(ULTRASONIC_DELAY))
-					{
-						double distance;
-						m_ultrasonicDownCount--;
-						ultrasonicSensor->PingEnable(true);
-						distance = ultrasonicSensor->GetRangeInches();
-						if (distance >= 0.0)
-						{
-							m_distance = distance;
-							m_shootDataRequested = false;
-							m_shootDataReady = true;
-						}
-						ultrasonicSensor->PingEnable(false);
-					}
-				}
-			}
-			else if (ds->GetDigitalIn(DS_USE_VISION_DISTANCE))
+			 if (ds->GetDigitalIn(DS_USE_VISION_DISTANCE))
 			{
 				// We have to poll the vision code on the driver station to get back the
 				// distance info
@@ -1174,6 +1143,7 @@ public:
 				m_ballCount = 0;
 				SetMotor (motor_fwd, m3);
 				SetMotor (motor_fwd, m4);
+				m_shootRequested = false;
 			}
 			PrintState(5, false);
 		}
@@ -1418,6 +1388,7 @@ public:
 					SetMotor (motor_off, m1);
 					SetMotor (motor_off, m2);
 					SetMotor (motor_fwd, m3);
+					m_shootRequested = false;
 				}
 				else if	((2 == m_ballCount) &&
 					 (motor_fwd == GetMotor(m1)) &&
@@ -1429,6 +1400,7 @@ public:
 					SetMotor (motor_off, m2);
 					SetMotor (motor_fwd, m3);
 					SetMotor (motor_fwd, m4);
+					m_shootRequested = false;
 				}
 				else if	((3 == m_ballCount) &&
 					 (motor_off == GetMotor(m1)) &&
@@ -1439,6 +1411,7 @@ public:
 					SetMotor (motor_fwd, m2);
 					SetMotor (motor_fwd, m3);
 					SetMotor (motor_fwd, m4);
+					m_shootRequested = false;
 				}
 				else if	((1 == m_ballCount) &&
 					 (motor_off == GetMotor(m1)) &&
@@ -1449,6 +1422,7 @@ public:
 					m_ballCount = 0;
 					SetMotor (motor_fwd, m3);
 					SetMotor (motor_fwd, m4);
+					m_shootRequested = false;
 				}
 			}
 			PrintState(5, false);
@@ -1841,7 +1815,8 @@ public:
 					(3 == m_ballCount) &&
 					(motor_off == GetMotor(m1)) &&
 					(motor_fwd == GetMotor(m2)) &&
-					(motor_fwd == GetMotor(m3)) &&					(motor_fwd == GetMotor(m4)))
+					(motor_fwd == GetMotor(m3)) &&					
+					(motor_fwd == GetMotor(m4)))
 			{
 				// S3OFFF -> I2FFOO
 				m_collectorMode = I;
@@ -1860,7 +1835,6 @@ public:
 		if (m_shootDataReady && m_shootRequested) // switch 5
 		{
 			PrintState(5, true);
-			m_shootRequested = false;
 			if ((I == m_collectorMode) &&
 				(motor_off == GetMotor(m3)) &&
 				(motor_off == GetMotor(m4)))
@@ -1878,7 +1852,7 @@ public:
 							SetMotor (motor_off, m1);
 							SetMotor (motor_off, m2);
 							SetMotor (motor_fwd, m3);
-
+							m_shootRequested = false;
 						}
 						else if ((motor_off == GetMotor(m1)) &&
 								 (motor_off == GetMotor(m2)))
@@ -1889,6 +1863,7 @@ public:
 							SetMotor (motor_fwd, m3);
 							m_ballCount--;
 							ballCollectorTimer->Start();
+							m_shootRequested = false;
 						}
 						else
 						{
@@ -1905,6 +1880,7 @@ public:
 							SetMotor (motor_off, m1);
 							SetMotor (motor_off, m2);
 							SetMotor (motor_fwd, m3);
+							m_shootRequested = false;
 						}
 						else
 						{
@@ -1920,6 +1896,7 @@ public:
 							SetMotor (motor_fwd, m4);
 							SetMotor (motor_fwd, m2);
 							SetMotor (motor_fwd, m3);
+							m_shootRequested = false;
 						}
 						else
 						{
@@ -2173,10 +2150,6 @@ public:
 
 		// Start the timer that controls how fast the camera servo can be updated
 		cameraTimer->Start();
-
-		// Start the timer that keeps track of the multiple reads used to get a
-		// distance from the ultrasonic sensor
-		ultrasonicTimer->Start();
 
 		// Set the elevation to "down"
 		m_shooterElevationUp = false;
