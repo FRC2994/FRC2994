@@ -2,6 +2,7 @@
 #include "Gamepad.h"
 #include "DashboardDataFormat.h"
 #include "MBUltrasonic.h"
+#include "CameraLight.h"
 
 // Access macros
 #define CollectorSwitchState(i) m_collector_current[(i)]
@@ -45,7 +46,7 @@
 #define BOTTOM_SHOOTER_ENCODER_B	6
 #define TOP_SHOOTER_ENCODER_A		7
 #define TOP_SHOOTER_ENCODER_B		8
-#define ULTRASONIC_PING				11
+#define ULTRASONIC_PW				11
 #define ULTRASONIC_RX				12
 #define CAMERA_LIGHT_ENABLE			13
 #define PNEUMATIC_PRESSURE_SWITCH	14
@@ -71,6 +72,8 @@
 #define SHOOTER_FEED			7
 
 // Solenoids
+#define CAMERA_LIGHT_INNER			1
+#define CAMERA_LIGHT_OUTER			2
 
 // Gamepad (real) button assignments
 #define SHOOT 		1
@@ -262,8 +265,8 @@ class Robot2012 : public SimpleRobot
 	Encoder 		*bottomShooterEncoder;
 	Encoder 		*topShooterEncoder;
 	MBUltrasonic 	*ultrasonicSensor;
-	Solenoid 	*cameraLight1;
-	Solenoid 	*cameraLight2;
+	CameraLight		*cameraLight;
+
 
 	// Motor Controllers
 	Jaguar *driveLeftMotor;
@@ -293,7 +296,6 @@ class Robot2012 : public SimpleRobot
 	DriverStation 		*ds;
 	Timer 				*ballCollectorTimer;
 	Compressor			*compressor;
-	//			*shooterElevationValve;
 	Timer				*cameraTimer;
 
 	// Ball collector Motors
@@ -436,11 +438,9 @@ public:
 
 		// Miscellaneous
 		compressor = 		new Compressor(PNEUMATIC_PRESSURE_SWITCH, COMPRESSOR);
-		cameraLight1 = 		new Solenoid(1);
-		cameraLight2 = 		new Solenoid(2);
+		cameraLight =		new SolenoidCameraLight(CAMERA_LIGHT_INNER, CAMERA_LIGHT_OUTER);
 		cameraTimer = 		new Timer();
- 		ultrasonicSensor =  new MBUltrasonic(ULTRASONIC_PING,
-											 ULTRASONIC_RX);
+ 		ultrasonicSensor =  new MBUltrasonic(ULTRASONIC_RX, ULTRASONIC_PW);
 		ballDisplay_0 = 	new Relay (BALL_DISPLAY_0);
 		ballDisplay_1 = 	new Relay (BALL_DISPLAY_1);
 
@@ -769,7 +769,7 @@ public:
 			}
 			else if (ds->GetDigitalIn(DS_USE_VISION_DISTANCE))
 			{
-				//cameraLight->Set(true);
+				cameraLight->On();
 				table->PutBoolean("getDistance", true);
 			}
 			else
@@ -891,7 +891,7 @@ public:
 					m_distance = table->GetDouble("distance");
 					m_shootDataReady = true;
 					m_shootDataRequested = false;
-					//cameraLight->Set(false);
+					cameraLight->Off();
 				}
 			}
 			else
@@ -2161,11 +2161,10 @@ public:
 
 		while (IsOperatorControl())
 		{
-			cameraLight1->Set(true);
-			cameraLight2->Set(true);
-			dsLCD->PrintfLine(DriverStationLCD::kUser_Line2, "l:%d r:%d", leftShifter->GetAngle(), rightShifter->GetAngle());
 			// Set debug flag
 			m_debug = m_ds->GetDigitalIn(DS_DEBUG);
+
+//			dsLCD->PrintfLine(DriverStationLCD::kUser_Line2, "l:%d r:%d", leftShifter->GetAngle(), rightShifter->GetAngle());
 
 			// Get inputs that we need to know both current and previous state
 			GetGamepadButtons();
