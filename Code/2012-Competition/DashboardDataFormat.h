@@ -2,7 +2,13 @@
 #define __DashboardDataFormat_h__
 
 #include "WPILib.h"
-
+typedef struct {
+	bool request;
+	int  targetBasket;
+	int  ballCount;
+	int  ballCollectorMode;
+	int  ultrasonicDistance;
+} dashboardDataStruct;
 /**
  * This class is just an example of one way you could organize the data that you want
  * to send to the dashboard.  The PackAndSend method does all the work.  You could
@@ -19,7 +25,7 @@ class DashboardDataFormat : public SensorBase
 public:
 	DashboardDataFormat(void);
 	virtual ~DashboardDataFormat();
-	void SendIOPortData(void);
+	void SendIOPortData(dashboardDataStruct data);
 	void SendVisionData(void);
 private:
 	DISALLOW_COPY_AND_ASSIGN(DashboardDataFormat);

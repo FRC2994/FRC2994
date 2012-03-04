@@ -66,7 +66,6 @@
 #define BALL_COLLECTOR_FRONT	1
 #define BALL_COLLECTOR_MIDDLE	2
 #define BALL_COLLECTOR_VERTICAL	3
-#define COMPRESSOR				4
 #define BALL_DISPLAY_0			5
 #define BALL_DISPLAY_1			6
 #define SHOOTER_FEED			7
@@ -106,9 +105,9 @@
 #define SHOOTER_BOTTOM_INCREASE 11
 
 // Manual distance settings
-#define SHORT_DISTANCE 		10
-#define MEDIUM_DISTANCE 	20
-#define LONG_DISTANCE 		30
+#define SHORT_DISTANCE 		120
+#define MEDIUM_DISTANCE 	240
+#define LONG_DISTANCE 		360
 
 // Analog (real) switch assignments
 #define S1 1
@@ -178,27 +177,29 @@ typedef struct
 	float distance;
 } step_speed;
 
+int sanity = 0;
+
 const shooter_table m_lowerBasketTable[SHOOTER_TABLE_ENTRIES] =
-		{{5, 0.45, 0.45, 0, 0},  // measured
-		 {10, 0.45, 0.45, 0, 0},
-		 {15, 0.45, 0.45, 0, 0},
-		 {20, 0.45, 0.45, 0, 0},
-		 {25, 0.45, 0.45, 0, 0},
+		{{60, 0.45, 0.45, 0, 0},  // measured
+		 {120, 0.45, 0.45, 0, 0},
+		 {180, 0.45, 0.45, 0, 0},
+		 {240, 0.45, 0.45, 0, 0},
+		 {300, 0.45, 0.45, 0, 0},
 		};
 const shooter_table 	m_middleBasketTable[SHOOTER_TABLE_ENTRIES] =
-		{{5, 0.55, 0.55, 0, 0},  // measured
-		 {10, 0.60, 0.60, 0, 0}, // measured
-		 {15, 0.70, 0.70, 0, 0}, 
-		 {20, 0.80, 0.80, 0, 0}, // measured
-		 {25, 0.90, 0.90, 0, 0},
+		{{60, 0.55, 0.55, 0, 0},  // measured
+		 {120, 0.60, 0.60, 0, 0}, // measured
+		 {180, 0.70, 0.70, 0, 0}, 
+		 {240, 0.80, 0.80, 0, 0}, // measured
+		 {300, 0.90, 0.90, 0, 0},
 		};
 
 const shooter_table 	m_upperBasketTable[SHOOTER_TABLE_ENTRIES] =
-		{{5, 0.60, 0.60, 0, 0},
-		 {10, 0.70, 0.70, 0, 0}, // measured
-		 {15, 0.75, 0.75, 0, 0}, // measured
-		 {20, 0.875, 0.875, 0, 0},
-		 {25, 1.00, 1.00, 0, 0}, // measured
+		{{60, 0.60, 0.60, 0, 0},
+		 {120, 0.70, 0.70, 0, 0}, // measured
+		 {180, 0.75, 0.75, 0, 0}, // measured
+		 {240, 0.875, 0.875, 0, 0},
+		 {300, 1.00, 1.00, 0, 0}, // measured
 		};
 
 const shooter_speed m_autoShootTable[SHOOTER_HEIGHT_ARRAY_SIZE][NUM_START_POSITION] =
@@ -235,12 +236,14 @@ const step_speed m_autoTurnBridge[NUM_START_POSITION] =
 
 const DriverStationLCD::Line ballCollectorDebugLine = DriverStationLCD::kUser_Line6;
 const double SHOOTER_TIMEOUT = 1.0;
-#define SHOOTER_TEST_INCREMENT 0.05
+#define SHOOTER_TEST_INCREMENT 0.025
 
 // Camera servo constants
 #define CAMERA_UPDATE_PERIOD 	0.1
 #define CAMERA_SERVO_BIG_INCR 	10
 #define CAMERA_SERVO_SMALL_INCR 5
+
+dashboardDataStruct dashboardData = {false, 0, 0, 0, 0};
 
 //----------------------------------------------------------------------------//
 //
@@ -273,7 +276,6 @@ class Robot2012 : public SimpleRobot
 	Jaguar *driveRightMotor;
 	Jaguar *shooterBottomMotor;
 	Jaguar *shooterTopMotor;
-	Jaguar *shooterAzimuthMotor;
 	Jaguar *armMotor;
 
 	// Servos
@@ -291,11 +293,10 @@ class Robot2012 : public SimpleRobot
 
 	// Misc
 	RobotDrive 			*robotDrive;
-//	DashboardDataFormat *dds;
+	DashboardDataFormat *dds;
 	DriverStationLCD 	*dsLCD;
 	DriverStation 		*ds;
 	Timer 				*ballCollectorTimer;
-	Compressor			*compressor;
 	Timer				*cameraTimer;
 
 	// Ball collector Motors
@@ -328,7 +329,6 @@ class Robot2012 : public SimpleRobot
 	float 	m_topShooterMotorSetting;
 	UINT32 	m_bottomShooterDesiredRPM;
 	UINT32 	m_topShooterDesiredRPM;
-	bool    m_shooterElevationUp;
 
 	// We keep easily indexable (and extensible) arrays for only
 	// those buttons and switches that we want to monitor. These are
@@ -362,7 +362,7 @@ class Robot2012 : public SimpleRobot
 	// Debug flag
 	bool m_debug;
 
-public:
+	public:
 
 //----------------------------------------------------------------------------//
 //
@@ -429,28 +429,25 @@ public:
 		topShooterEncoder->SetReverseDirection(false);  // change to true if necessary
 		topShooterEncoder->Start();
 
-		// Solenoid(s)
-
 		// Driver station I/O
 		ds = 	DriverStation::GetInstance();
 		dsLCD = DriverStationLCD::GetInstance();
-//		dds = 	new DashboardDataFormat();
+		dds = 	new DashboardDataFormat();
 
 		// Miscellaneous
-		compressor = 		new Compressor(PNEUMATIC_PRESSURE_SWITCH, COMPRESSOR);
 		cameraLight =		new SolenoidCameraLight(CAMERA_LIGHT_INNER, CAMERA_LIGHT_OUTER);
 		cameraTimer = 		new Timer();
  		ultrasonicSensor =  new MBUltrasonic(ULTRASONIC_RX, ULTRASONIC_PW);
 		ballDisplay_0 = 	new Relay (BALL_DISPLAY_0);
 		ballDisplay_1 = 	new Relay (BALL_DISPLAY_1);
+		armMotor = 			 new Jaguar(ARM_MOTOR);
+
 
 		// Ball collector motors
 		ballCollectorM1 = new Relay(BALL_COLLECTOR_FRONT);
 		ballCollectorM2 = new Relay(BALL_COLLECTOR_MIDDLE);
 		ballCollectorM3 = new Relay(BALL_COLLECTOR_VERTICAL);
-
 		ballCollectorTimer = new Timer();
-		armMotor = 			 new Jaguar(ARM_MOTOR);
 
 		m_shooterBottomScaleFactor 	= 1;
 		m_shooterTopScaleFactor 	= 1;
@@ -458,7 +455,6 @@ public:
 		m_topShooterMotorSetting 	= 0.0;
 		m_bottomShooterDesiredRPM 	= 0;
 		m_topShooterDesiredRPM 		= 0;
-		m_shooterElevationUp		= false;
 		m_targetBasketHeight		= basket_low;
 
 		m_shootDataRequested 	= false;
@@ -475,7 +471,7 @@ public:
 		}
 
 		m_debug = false;
-		dsLCD->PrintfLine(DriverStationLCD::kUser_Line1, "2012 " __TIME__);
+		dsLCD->PrintfLine(DriverStationLCD::kUser_Line1, "GIT " __TIME__);
 		dsLCD->UpdateLCD();
 		robotDrive = new RobotDrive(driveLeftMotor, driveRightMotor);
 		robotDrive->SetExpiration(0.5);
@@ -754,27 +750,29 @@ public:
 //
 //----------------------------------------------------------------------------//
 
-	void MakeAutoDistanceRequest(basket_height basket)
+	void MakeAutoDistanceRequest(void)
 	{
+		if (ds->GetDigitalIn(DS_USE_ULTRASONIC_DISTANCE) &&
+			!ds->GetDigitalIn(DS_USE_VISION_DISTANCE))
+		{
+			m_distance = (int)ultrasonicSensor->GetRangeInches();
+			dashboardData.ultrasonicDistance = m_distance;
+			m_shootMode = automatic;
+			m_shootDataReady = true;
+		}
+
 		if (!m_shootDataRequested)
 		{
 			m_shootDataRequested = true;
-			m_targetBasketHeight = basket;
 			m_shootMode 		 = automatic;
 
-			if (ds->GetDigitalIn(DS_USE_ULTRASONIC_DISTANCE) &&
-				!ds->GetDigitalIn(DS_USE_VISION_DISTANCE))
-			{
-				m_distance = (int)ultrasonicSensor->GetRangeInches();
-			}
-			else if (ds->GetDigitalIn(DS_USE_VISION_DISTANCE))
+			if (ds->GetDigitalIn(DS_USE_VISION_DISTANCE))
 			{
 				cameraLight->On();
-				table->PutBoolean("getDistance", true);
-			}
-			else
-			{
-				// Do nothing
+				m_shootDataReady = false;
+				dashboardData.request = true;
+				//table->PutBoolean("getDistance", true); // ToDo - replace this with dds send, etc.
+				
 			}
 		}
 	}
@@ -785,14 +783,10 @@ public:
 
 	void HandleShooterInputs(void)
 	{
-		// Handle the turret joystick
-		shooterAzimuthMotor->Set(gamepad->GetLeftY());
-		
 		// Handle buttons 1 through 4 (manual mode distance base and shoot
 		// button)
 		if (pressed == GamepadButtonEvent(low))
 		{
-			//m_targetBasketHeight = basket_low;
 			m_distance = SHORT_DISTANCE;
 			m_shootDataReady = true;
 			m_shootMode = manual;
@@ -800,7 +794,6 @@ public:
 
 		if (pressed == GamepadButtonEvent(medium))
 		{
-			//m_targetBasketHeight = basket_medium;
 			m_distance = MEDIUM_DISTANCE;
 			m_shootDataReady = true;
 			m_shootMode = manual;
@@ -808,7 +801,6 @@ public:
 
 		if (pressed == GamepadButtonEvent(high))
 		{
-			//m_targetBasketHeight = basket_high;
 			m_distance = LONG_DISTANCE;
 			m_shootDataReady = true;
 			m_shootMode = manual;
@@ -844,41 +836,31 @@ public:
 		if (pressed == GamepadButtonEvent(basket_top))
 		{
 			m_targetBasketHeight = basket_high; // for manual mode
-			//MakeAutoDistanceRequest(basket_high);
+			dashboardData.targetBasket = 2;
+			MakeAutoDistanceRequest();
 		}
 
 		if (pressed == GamepadButtonEvent(basket_left))
 		{
 			m_targetBasketHeight = basket_medium; // for manual mode
-			//MakeAutoDistanceRequest(basket_medium);
+			dashboardData.targetBasket = 1;
+			MakeAutoDistanceRequest();
 		}
 
 		if (pressed == GamepadButtonEvent(basket_right))
 		{
 			m_targetBasketHeight = basket_medium; // for manual mode
-			//MakeAutoDistanceRequest(basket_medium);
+			dashboardData.targetBasket = 3;
+			MakeAutoDistanceRequest();
 		}
 
 		if (pressed == GamepadButtonEvent(basket_bottom))
 		{
 			m_targetBasketHeight = basket_low; // for manual mode
-			//MakeAutoDistanceRequest(basket_low);
+			dashboardData.targetBasket = 0;
+			MakeAutoDistanceRequest();
 		}
-		
-		if (!m_shooterElevationUp && (pressed == GamepadButtonEvent(elevation)))
-		{
-			dsLCD->PrintfLine(DriverStationLCD::kUser_Line2,"Setting up");
-			m_shooterElevationUp = true;
-			//shooterElevationValve->Set(m_shooterElevationUp);
-		}
-		else if ((pressed == GamepadButtonEvent(elevation)) && m_shooterElevationUp)
-		{
-			dsLCD->PrintfLine(DriverStationLCD::kUser_Line2,"Setting down");
-
-			m_shooterElevationUp = false;
-			//shooterElevationValve->Set(m_shooterElevationUp);
-		}
-
+				
 		// Handle outstanding vision/ultrasonic distance requests
 		if (m_shootDataRequested)
 		{
@@ -886,11 +868,19 @@ public:
 			{
 				// We have to poll the vision code on the driver station to get back the
 				// distance info
-				bool dataReady = table->GetBoolean("haveDistance");
+					dsLCD->PrintfLine(DriverStationLCD::kUser_Line2, "san: bef %d", sanity);
+					dsLCD->UpdateLCD();
+
+				bool dataReady = table->GetBoolean("haveDistance"); // ToDo: will have to poll the flag from the ds
+				dsLCD->PrintfLine(DriverStationLCD::kUser_Line2, "san: aft %d", sanity);
+				dsLCD->UpdateLCD();
+
 				if (dataReady) {
 					m_distance = table->GetInt("distance");
+					//table->PutBoolean("haveDistance",false);
 					m_shootDataReady = true;
 					m_shootDataRequested = false;
+					dashboardData.request = false;
 					cameraLight->Off();
 				}
 			}
@@ -1835,6 +1825,9 @@ public:
 		if (m_shootDataReady && m_shootRequested) // switch 5
 		{
 			PrintState(5, true);
+// DEBUG DEBUG DEBUG
+			m_shootRequested = false;
+// DEBUG DEBUG DEBUG
 			if ((I == m_collectorMode) &&
 				(motor_off == GetMotor(m3)) &&
 				(motor_off == GetMotor(m4)))
@@ -2085,7 +2078,16 @@ public:
 
 	void UpdateDriverStation(void)
 	{
+		// Fill in the data struct to be sent to the driver station (that is not filled in elsewhere)
+		dashboardData.ballCount = m_ballCount;
+		dashboardData.ballCollectorMode = m_collectorMode;
+		// Update the driverstation data panels and send info to vision system
+		dds->SendIOPortData(dashboardData);
 		// Put any general info here
+		dsLCD->PrintfLine(DriverStationLCD::kUser_Line4, "%d %d %d : %d", m_shootDataRequested, 
+																	 	  m_shootDataReady, 
+																	 	  m_shootRequested,
+																	 	  m_distance);
 		dsLCD->UpdateLCD();
 	}
 
@@ -2145,15 +2147,8 @@ public:
 		GetRightJoystickButtons ();
 		GetCollectorSwitches();
 
-		// Start the compressor
-		compressor->Start();
-
 		// Start the timer that controls how fast the camera servo can be updated
 		cameraTimer->Start();
-
-		// Set the elevation to "down"
-		m_shooterElevationUp = false;
-		//shooterElevationValve->Set(m_shooterElevationUp);
 
 		//----------------------------------------------------------------------------//
 		// Main loop
@@ -2164,40 +2159,55 @@ public:
 			// Set debug flag
 			m_debug = m_ds->GetDigitalIn(DS_DEBUG);
 
-//			dsLCD->PrintfLine(DriverStationLCD::kUser_Line2, "l:%d r:%d", leftShifter->GetAngle(), rightShifter->GetAngle());
+			sanity++;
 
 			// Make sure ultrasonic sensor is called regularly so that when we want a distance
 			// we can get an accurate one
 			ultrasonicSensor->UpdateRangeSamples();
 			
 			// Get inputs that we need to know both current and previous state
+			dsLCD->PrintfLine(DriverStationLCD::kUser_Line2, "san: but %d", sanity);
+			dsLCD->UpdateLCD();
 			GetGamepadButtons();
 			GetLeftJoystickButtons ();
 			GetRightJoystickButtons ();
 			GetCollectorSwitches();
 
 			// Make any necessary changes to the arm
+			dsLCD->PrintfLine(DriverStationLCD::kUser_Line2, "san: arm %d", sanity);
+			dsLCD->UpdateLCD();
+
 			HandleArm ();
 
 			// Drive the robot
+			dsLCD->PrintfLine(DriverStationLCD::kUser_Line2, "san: drv %d", sanity);
+			dsLCD->UpdateLCD();
+
 			HandleDriverInputs();
 
 			// Handle camera position change requests
+			dsLCD->PrintfLine(DriverStationLCD::kUser_Line2, "san: cam %d", sanity);
+			dsLCD->UpdateLCD();
+
 			HandleCameraServo();
 
 			// Process the shooter button and joystick inputs.
+			dsLCD->PrintfLine(DriverStationLCD::kUser_Line2, "san: sho %d", sanity);
+			dsLCD->UpdateLCD();
+
 			if(m_debug)
 			{
-				TestBallCollector();
 				TestShooterInputs();
 			}
 			else
 			{
-				RunBallCollectorStateMachine();
 				HandleShooterInputs();
 			}
 
 			// Handle the collection of balls from the floor automatically
+			dsLCD->PrintfLine(DriverStationLCD::kUser_Line2, "san: col %d", sanity);
+			dsLCD->UpdateLCD();
+
 			if(m_debug)
 			{
 				TestBallCollector();
@@ -2215,6 +2225,9 @@ public:
 			
 			// Gather up all the data to be sent to the driver station
 			// and update the driver station LCD
+			dsLCD->PrintfLine(DriverStationLCD::kUser_Line2, "san: ds %d", sanity);
+			dsLCD->UpdateLCD();
+
 			UpdateDriverStation();
 		}
 	}

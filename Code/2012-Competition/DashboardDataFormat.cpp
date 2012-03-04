@@ -54,7 +54,7 @@ void DashboardDataFormat::SendVisionData()
 	dash.Finalize();
 }
 
-void DashboardDataFormat::SendIOPortData()
+void DashboardDataFormat::SendIOPortData(dashboardDataStruct data)
 {
 	Dashboard &dash = DriverStation::GetInstance()->GetLowPriorityDashboardPacker();
 	dash.AddCluster();
@@ -175,9 +175,19 @@ void DashboardDataFormat::SendIOPortData()
 			dash.FinalizeCluster();
 		}
 		dash.FinalizeCluster();
-
 		// Can't read solenoids without an instance of the object
 		dash.AddU8((char) 0);
+
+		dash.AddCluster();
+		{
+			dash.AddBoolean(data.request);
+			dash.AddU32(data.targetBasket);
+			dash.AddU32(data.ballCount);
+			dash.AddU32(data.ballCollectorMode);
+			dash.AddU32(data.ultrasonicDistance);
+		}
+		dash.FinalizeCluster();
+		
 	}
 	dash.FinalizeCluster();
 	dash.Finalize();
