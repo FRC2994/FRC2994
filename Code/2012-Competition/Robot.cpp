@@ -129,8 +129,8 @@
 #define ARM_WAIT		1.0
 
 // Distance measuring
-#define MANUAL_DIST_SMALL_INCREMENT	1
-#define MANUAL_DIST_BIG_INCREMENT	5
+#define MANUAL_DIST_SMALL_INCREMENT	6
+#define MANUAL_DIST_BIG_INCREMENT	30
 
 // Shaft Encoder distance/pulse
 // 8 inch wheel: PI*8/360 = 3.14159265*8/360 = .06981317 inches per pulse
@@ -2081,6 +2081,8 @@ class Robot2012 : public SimpleRobot
 		// Fill in the data struct to be sent to the driver station (that is not filled in elsewhere)
 		dashboardData.ballCount = m_ballCount;
 		dashboardData.ballCollectorMode = m_collectorMode;
+		// Ken - I don't think we should leave this on all the time
+		dashboardData.ultrasonicDistance = (int) ultrasonicSensor->GetRangeInches();
 		// Update the driverstation data panels and send info to vision system
 		dds->SendIOPortData(dashboardData);
 		// Put any general info here
@@ -2149,7 +2151,10 @@ class Robot2012 : public SimpleRobot
 
 		// Start the timer that controls how fast the camera servo can be updated
 		cameraTimer->Start();
-
+		
+		// Enable ultrasonic range finder
+		ultrasonicSensor->PingEnable ();
+		
 		//----------------------------------------------------------------------------//
 		// Main loop
 		//----------------------------------------------------------------------------//
@@ -2229,6 +2234,10 @@ class Robot2012 : public SimpleRobot
 			dsLCD->UpdateLCD();
 
 			UpdateDriverStation();
+			
+			// This is important - we will overdrive the NetworkTables code without
+			// this and cause it to lock up and halt the main telop loop
+			Wait (0.005);
 		}
 	}
 
