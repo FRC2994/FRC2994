@@ -210,9 +210,9 @@ const shooter_table 	m_upperBasketTable[SHOOTER_TABLE_ENTRIES] =
 
 const shooter_speed m_autoShootTable[SHOOTER_HEIGHT_ARRAY_SIZE][NUM_START_POSITION] =
 {
-		{{.8,.8}, {.8,.8}, {.8,.8}},   // low
-		{{.8,.8}, {.8,.8}, {.8,.8}},   // medium
-		{{.8,.8}, {.8,.8}, {.8,.8}},   // high
+		{{.9,.9}, {.9,.9}, {.9,.9}},   // low
+		{{.9,.9}, {.9,.9}, {.9,.9}},   // medium
+		{{.9,.9}, {.9,.9}, {.9,.9}},   // high
 };
 
 const step_speed m_autoReverse[NUM_START_POSITION] =
@@ -376,7 +376,6 @@ class Robot2012 : public SimpleRobot
 
 	Robot2012(void)
 	{
-
 		// Human input devices
 		gamepad = 		new Gamepad(GAMEPAD);
 		leftJoystick = 	new Joystick(LEFT_JOYSTICK);
@@ -441,12 +440,12 @@ class Robot2012 : public SimpleRobot
 		dds = 	new DashboardDataFormat();
 
 		// Miscellaneous
-		cameraLight =		new SolenoidCameraLight(CAMERA_LIGHT_INNER, CAMERA_LIGHT_OUTER);
+		cameraLight =		new GPIOCameraLight(CAMERA_LIGHT_ENABLE);
 		cameraTimer = 		new Timer();
  		ultrasonicSensor =  new MBUltrasonic(ULTRASONIC_RX, ULTRASONIC_PW);
 		ballDisplay_0 = 	new Relay (BALL_DISPLAY_0);
 		ballDisplay_1 = 	new Relay (BALL_DISPLAY_1);
-		armMotor = 			 new Jaguar(ARM_MOTOR);
+		armMotor = 			new Jaguar(ARM_MOTOR);
 
 
 		// Ball collector motors
@@ -475,6 +474,9 @@ class Robot2012 : public SimpleRobot
 		{
 			m_motorState[i] = motor_off;
 		}
+		
+		leftShifter->SetAngle(SHIFTER_HIGH_GEAR);
+		rightShifter->SetAngle(SHIFTER_HIGH_GEAR);
 
 		m_debug = false;
 		dsLCD->PrintfLine(DriverStationLCD::kUser_Line1, "Mar8 " __TIME__);
@@ -690,25 +692,11 @@ class Robot2012 : public SimpleRobot
 
 		if (!m_ds->GetDigitalIn(DS_DRIVE_TYPE))
 		{
-			if (LeftJoystickButtonState(lprecision))
-			{
-				robotDrive->ArcadeDrive((currentJoystick->GetY()/2.0), (currentJoystick->GetX()/2.0));
-			}
-			else
-			{
-				robotDrive->ArcadeDrive(currentJoystick);
-			}
+			robotDrive->ArcadeDrive(currentJoystick);
 		}
 		else
 		{
-			if (LeftJoystickButtonState(lprecision))
-			{
-				robotDrive->TankDrive((leftJoystick->GetY()/2.0), (rightJoystick->GetY()/2.0));
-			}
-			else
-			{
-				robotDrive->TankDrive(leftJoystick, rightJoystick);
-			}
+			robotDrive->TankDrive(leftJoystick, rightJoystick);
 		}
 	}
 
@@ -789,7 +777,6 @@ class Robot2012 : public SimpleRobot
 
 			if (ds->GetDigitalIn(DS_USE_VISION_DISTANCE))
 			{
-				cameraLight->On();
 				m_shootDataReady = false;
 				dashboardData.request = true;				
 			}
@@ -899,7 +886,6 @@ class Robot2012 : public SimpleRobot
 					m_shootDataReady = true;
 					m_shootDataRequested = false;
 					dashboardData.request = false;
-					cameraLight->Off();
 				}
 			}
 			else
@@ -1150,7 +1136,7 @@ class Robot2012 : public SimpleRobot
 				// 1OOOO -> 0OOFF
 				m_ballCount = 0;
 				SetMotor (motor_fwd, m3);
-				SetMotor (motor_fwd, m4);\
+				SetMotor (motor_fwd, m4);
 				ballCollectorTimer->Start();
 				m_shootRequested = false;
 			}
@@ -1170,6 +1156,7 @@ class Robot2012 : public SimpleRobot
 				SetMotor (motor_fwd, m1);
 				SetMotor (motor_fwd, m2);
 				SetMotor (motor_off, m4);
+				ballCollectorTimer->Stop();
 			}
 			PrintState(6, false);
 		}
@@ -1454,7 +1441,7 @@ class Robot2012 : public SimpleRobot
 				SetMotor (motor_fwd, m2);
 				SetMotor (motor_off, m3);
 				SetMotor (motor_off, m4);
-
+				ballCollectorTimer->Stop();
 			}
 			PrintState(6, false);
 		}
@@ -2158,6 +2145,35 @@ class Robot2012 : public SimpleRobot
 
 	void OperatorControl(void)
 	{
+//		Solenoid *sol1;
+//		Solenoid *sol2;
+//		Solenoid *sol3;
+//		Solenoid *sol4;
+//		Solenoid *sol5;
+//		Solenoid *sol6;
+//		Solenoid *sol7;
+//		Solenoid *sol8;
+//		
+//		sol1 = new Solenoid(1);
+//		sol2 = new Solenoid(2);
+//		sol3 = new Solenoid(3);
+//		sol4 = new Solenoid(4);
+//		sol5 = new Solenoid(5);
+//		sol6 = new Solenoid(6);
+//		sol7 = new Solenoid(7);
+//		sol8 = new Solenoid(8);
+//		
+// 		sol1->Set(1);
+// 		sol2->Set(1);
+// 		sol3->Set(1);
+// 		sol4->Set(1);
+// 		sol5->Set(1);
+// 		sol6->Set(1);
+// 		sol7->Set(1);
+// 		sol8->Set(1);
+		
+		
+		cameraLight->On();
 		leftShifter->SetAngle(40);
 		leftShifter->SetAngle(40);
 		robotDrive->SetSafetyEnabled(true);
@@ -2249,7 +2265,7 @@ class Robot2012 : public SimpleRobot
 
 			// Display the number of balls we are carrying on an display
 			// on the outside of the robot
-			//DisplayCollectedBallCount();
+			DisplayCollectedBallCount();
 			
 			// Gather up all the data to be sent to the driver station
 			// and update the driver station LCD
@@ -2348,7 +2364,7 @@ class Robot2012 : public SimpleRobot
 		}
 
 		// - delay until shooting first basket (analog slider 3)
-		shootDelay = ds->GetAnalogIn(DELAY_SLIDER);
+		shootDelay = ds->GetAnalogIn(DELAY_SLIDER)*2;
 
 
 		dsLCD->PrintfLine(DriverStationLCD::kUser_Line2, "Shooting...");
@@ -2359,8 +2375,8 @@ class Robot2012 : public SimpleRobot
 		// Shoot two balls
 		Wait(shootDelay);
 		dsLCD->PrintfLine(DriverStationLCD::kUser_Line4, "bot: %5.2f",m_autoShootTable[which_basket][position].speed_bottom);
-		shooterBottomMotor->Set(m_autoShootTable[which_basket][position].speed_bottom);
-		shooterTopMotor->Set(m_autoShootTable[which_basket][position].speed_top);
+		shooterBottomMotor->Set(-2.0*(m_autoShootTable[which_basket][position].speed_bottom));
+		shooterTopMotor->Set(-2.0*(m_autoShootTable[which_basket][position].speed_top));
 		shooterHelperMotor->Set(Relay::kForward);
 		SetMotor (motor_fwd, m3);
 		
