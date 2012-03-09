@@ -104,6 +104,9 @@
 #define SHOOTER_BOTTOM_DECREASE 10
 #define SHOOTER_BOTTOM_INCREASE 11
 
+// Dual-joystick assignments
+#define PRECISION 4
+
 // Manual distance settings
 #define SHORT_DISTANCE 		120
 #define MEDIUM_DISTANCE 	240
@@ -155,7 +158,7 @@ typedef enum {manual, automatic, NUM_SHOOTER_MODES} shooter_modes;
 
 
 // Structure for shooter tables
-#define SHOOTER_TABLE_ENTRIES 5  // this will have to be larger
+#define SHOOTER_TABLE_ENTRIES 6  // this will have to be larger
 typedef struct {
 	int	   distance;
 	float  bottomMotorSetting;
@@ -180,33 +183,36 @@ typedef struct
 int sanity = 0;
 
 const shooter_table m_lowerBasketTable[SHOOTER_TABLE_ENTRIES] =
-		{{60, 0.45, 0.45, 0, 0},  // measured
+		{{60, 0.45, 0.45, 0, 0},  
 		 {120, 0.45, 0.45, 0, 0},
 		 {180, 0.45, 0.45, 0, 0},
 		 {240, 0.45, 0.45, 0, 0},
 		 {300, 0.45, 0.45, 0, 0},
+		 {300, 0.45, 0.45, 0, 0},
 		};
 const shooter_table 	m_middleBasketTable[SHOOTER_TABLE_ENTRIES] =
-		{{60, 0.55, 0.55, 0, 0},  // measured
-		 {120, 0.60, 0.60, 0, 0}, // measured
-		 {180, 0.70, 0.70, 0, 0}, 
-		 {240, 0.80, 0.80, 0, 0}, // measured
-		 {300, 0.90, 0.90, 0, 0},
+		{{68,  0.6,  0.6,  0, 0},  
+		 {144, 0.75, 0.75, 0, 0}, 
+		 {175, 0.8,  0.8,  0, 0}, 
+		 {202, 0.85, 0.85, 0, 0}, 
+		 {211, 0.90, 0.90, 0, 0},
+		 {245, 1.0,  1.0,  0, 0},
 		};
 
 const shooter_table 	m_upperBasketTable[SHOOTER_TABLE_ENTRIES] =
-		{{60, 0.60, 0.60, 0, 0},
-		 {120, 0.70, 0.70, 0, 0}, // measured
-		 {180, 0.75, 0.75, 0, 0}, // measured
-		 {240, 0.875, 0.875, 0, 0},
-		 {300, 1.00, 1.00, 0, 0}, // measured
+		{{ 37, 0.60, 0.60, 0, 0},
+		 {113, 0.75, 0.75, 0, 0}, 
+		 {144, 0.80, 0.80, 0, 0}, 
+		 {171, 0.85, 0.85, 0, 0},
+		 {180, 0.90, 0.90, 0, 0}, 
+		 {214, 1.00, 1.00, 0, 0},
 		};
 
 const shooter_speed m_autoShootTable[SHOOTER_HEIGHT_ARRAY_SIZE][NUM_START_POSITION] =
 {
-		{{.5,.5}, {.55,.55}, {.6,.6}},
-		{{.65,.65}, {.7,.7}, {.8,.8}},
-		{{.9,.9}, {.95,.95}, {1.0,1.0}},
+		{{.8,.8}, {.8,.8}, {.8,.8}},   // low
+		{{.8,.8}, {.8,.8}, {.8,.8}},   // medium
+		{{.8,.8}, {.8,.8}, {.8,.8}},   // high
 };
 
 const step_speed m_autoReverse[NUM_START_POSITION] =
@@ -344,7 +350,7 @@ class Robot2012 : public SimpleRobot
 	changes m_gamepad_changes[GAMEPAD_ARRAY_SIZE];
 
 	// left joystick abstract arrays
-	typedef enum {shiftl, arm_upl, arm_downl, m1_fwd, m1_rev, m2_fwd, m2_rev, m3_fwd, m3_rev,
+	typedef enum {shiftl, arm_upl, arm_downl, lprecision, m1_fwd, m1_rev, m2_fwd, m2_rev, m3_fwd, m3_rev,
 	LEFT_JOYSTICK_ARRAY_SIZE} left_joystick_buttons;
 
 	state   m_left_joystick_current[LEFT_JOYSTICK_ARRAY_SIZE];
@@ -352,7 +358,7 @@ class Robot2012 : public SimpleRobot
 	changes m_left_joystick_changes[LEFT_JOYSTICK_ARRAY_SIZE];
 
 	// right joystick abstract arrays
-	typedef enum {shiftr, arm_upr, arm_downr, shooter_top_inc, shooter_top_dec, shooter_bot_inc, 
+	typedef enum {shiftr, arm_upr, arm_downr, shooter_top_inc, rprecision, shooter_top_dec, shooter_bot_inc, 
 				  shooter_bot_dec, shooter_mot, RIGHT_JOYSTICK_ARRAY_SIZE} right_joystick_buttons;
 
 	state   m_right_joystick_current[RIGHT_JOYSTICK_ARRAY_SIZE];
@@ -471,7 +477,7 @@ class Robot2012 : public SimpleRobot
 		}
 
 		m_debug = false;
-		dsLCD->PrintfLine(DriverStationLCD::kUser_Line1, "GIT " __TIME__);
+		dsLCD->PrintfLine(DriverStationLCD::kUser_Line1, "Mar8 " __TIME__);
 		dsLCD->UpdateLCD();
 		robotDrive = new RobotDrive(driveLeftMotor, driveRightMotor);
 		robotDrive->SetExpiration(0.5);
@@ -582,6 +588,7 @@ class Robot2012 : public SimpleRobot
 		m_right_joystick_current[shiftr]  = 		rightJoystick->GetRawButton(SHIFTER_BUTTON) ? on : off;
 		m_right_joystick_current[arm_upr] = 		rightJoystick->GetRawButton(ARM_UP) ? on : off;
 		m_right_joystick_current[arm_downr] = 		rightJoystick->GetRawButton(ARM_DOWN) ? on : off;
+		m_right_joystick_current[rprecision] = 		rightJoystick->GetRawButton(PRECISION) ? on : off;
 		m_right_joystick_current[shooter_top_inc] = rightJoystick->GetRawButton(SHOOTER_TOP_INCREASE) ? on : off;
 		m_right_joystick_current[shooter_top_dec] = rightJoystick->GetRawButton(SHOOTER_TOP_DECREASE) ? on : off;
 		m_right_joystick_current[shooter_bot_inc] = rightJoystick->GetRawButton(SHOOTER_BOTTOM_INCREASE) ? on : off;
@@ -683,11 +690,25 @@ class Robot2012 : public SimpleRobot
 
 		if (!m_ds->GetDigitalIn(DS_DRIVE_TYPE))
 		{
-			robotDrive->ArcadeDrive(currentJoystick);
+			if (LeftJoystickButtonState(lprecision))
+			{
+				robotDrive->ArcadeDrive((currentJoystick->GetY()/2.0), (currentJoystick->GetX()/2.0));
+			}
+			else
+			{
+				robotDrive->ArcadeDrive(currentJoystick);
+			}
 		}
 		else
 		{
-			robotDrive->TankDrive(leftJoystick, rightJoystick);
+			if (LeftJoystickButtonState(lprecision))
+			{
+				robotDrive->TankDrive((leftJoystick->GetY()/2.0), (rightJoystick->GetY()/2.0));
+			}
+			else
+			{
+				robotDrive->TankDrive(leftJoystick, rightJoystick);
+			}
 		}
 	}
 
@@ -770,9 +791,7 @@ class Robot2012 : public SimpleRobot
 			{
 				cameraLight->On();
 				m_shootDataReady = false;
-				dashboardData.request = true;
-				//table->PutBoolean("getDistance", true); // ToDo - replace this with dds send, etc.
-				
+				dashboardData.request = true;				
 			}
 		}
 	}
@@ -871,13 +890,12 @@ class Robot2012 : public SimpleRobot
 					dsLCD->PrintfLine(DriverStationLCD::kUser_Line2, "san: bef %d", sanity);
 					dsLCD->UpdateLCD();
 
-				bool dataReady = table->GetBoolean("haveDistance"); // ToDo: will have to poll the flag from the ds
+				bool dataReady = table->GetBoolean("haveDistance");
 				dsLCD->PrintfLine(DriverStationLCD::kUser_Line2, "san: aft %d", sanity);
 				dsLCD->UpdateLCD();
 
 				if (dataReady) {
 					m_distance = table->GetInt("distance");
-					//table->PutBoolean("haveDistance",false);
 					m_shootDataReady = true;
 					m_shootDataRequested = false;
 					dashboardData.request = false;
@@ -1132,7 +1150,8 @@ class Robot2012 : public SimpleRobot
 				// 1OOOO -> 0OOFF
 				m_ballCount = 0;
 				SetMotor (motor_fwd, m3);
-				SetMotor (motor_fwd, m4);
+				SetMotor (motor_fwd, m4);\
+				ballCollectorTimer->Start();
 				m_shootRequested = false;
 			}
 			PrintState(5, false);
@@ -1412,6 +1431,7 @@ class Robot2012 : public SimpleRobot
 					m_ballCount = 0;
 					SetMotor (motor_fwd, m3);
 					SetMotor (motor_fwd, m4);
+					ballCollectorTimer->Start();
 					m_shootRequested = false;
 				}
 			}
@@ -1826,7 +1846,7 @@ class Robot2012 : public SimpleRobot
 		{
 			PrintState(5, true);
 // DEBUG DEBUG DEBUG
-			m_shootRequested = false;
+//			m_shootRequested = false;
 // DEBUG DEBUG DEBUG
 			if ((I == m_collectorMode) &&
 				(motor_off == GetMotor(m3)) &&
@@ -2153,7 +2173,10 @@ class Robot2012 : public SimpleRobot
 		cameraTimer->Start();
 		
 		// Enable ultrasonic range finder
-		ultrasonicSensor->PingEnable ();
+		if (ds->GetDigitalIn(DS_USE_ULTRASONIC_DISTANCE))
+		{
+			ultrasonicSensor->PingEnable ();
+		}
 		
 		//----------------------------------------------------------------------------//
 		// Main loop
@@ -2219,9 +2242,9 @@ class Robot2012 : public SimpleRobot
 			}
 			else
 			{
-				RunBallCollectorStateMachine();
+				//RunBallCollectorStateMachine();
 				//RunBallCollectorStateMachine_1switch();
-				//RunBallCollectorStateMachine_3switch();
+				RunBallCollectorStateMachine_3switch();
 			}
 
 			// Display the number of balls we are carrying on an display
@@ -2339,28 +2362,30 @@ class Robot2012 : public SimpleRobot
 		shooterBottomMotor->Set(m_autoShootTable[which_basket][position].speed_bottom);
 		shooterTopMotor->Set(m_autoShootTable[which_basket][position].speed_top);
 		shooterHelperMotor->Set(Relay::kForward);
-
+		SetMotor (motor_fwd, m3);
+		
 		Wait(BALL_WAIT);
 
 		shooterBottomMotor->Set(0);
 		shooterTopMotor->Set(0);
 		shooterHelperMotor->Set(Relay::kOff);
+		SetMotor (motor_off, m3);
 
 		// Go to bridge
 
 		//TODO: Make this a constant
-		DoAutonomousMoveStep(m_autoReverse, position, "Reversing...");
+		//DoAutonomousMoveStep(m_autoReverse, position, "Reversing...");
 
-		DoAutonomousMoveStep(m_autoTurnInitial, position, "Doing initial turn...");
+		//DoAutonomousMoveStep(m_autoTurnInitial, position, "Doing initial turn...");
 
-		DoAutonomousMoveStep(m_autoToBridge, position, "Driving to bridge...");
+		//DoAutonomousMoveStep(m_autoToBridge, position, "Driving to bridge...");
 
-		DoAutonomousMoveStep(m_autoTurnBridge, position, "Turning to face bridge...");
+		//DoAutonomousMoveStep(m_autoTurnBridge, position, "Turning to face bridge...");
 
 		// Tip bridge to release balls
-		armMotor->Set(-1.0);
-		Wait(ARM_WAIT);
-		armMotor->Set(1.0);
+		//armMotor->Set(-1.0);
+		//Wait(ARM_WAIT);
+		//armMotor->Set(1.0);
 
 		// - are we in kinect mode? (digital IO ??)
 
