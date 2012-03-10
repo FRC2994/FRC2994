@@ -662,7 +662,7 @@ class Robot2012 : public SimpleRobot
 					   	   	   (pressed == LeftJoystickButtonEvent(arm_downl))))
 			{
 				armUp = false;
-				armMotor->Set(-0.2);
+				armMotor->Set(-0.4);
 			}
 		}
 	}
@@ -1394,8 +1394,13 @@ class Robot2012 : public SimpleRobot
 					m_collectorMode = S;
 					SetMotor (motor_off, m1);
 					SetMotor (motor_off, m2);
-					SetMotor (motor_fwd, m3);
 					SetMotor (motor_fwd, m4);
+					for (int j = 0; j < 100 ; j++)
+					{
+						HandleDriverInputs ();
+						Wait (0.01);
+					}
+					SetMotor (motor_fwd, m3);
 					m_shootRequested = false;
 				}
 				else if	((3 == m_ballCount) &&
@@ -1405,8 +1410,13 @@ class Robot2012 : public SimpleRobot
 					// I3OOOO -> S3OFFF
 					m_collectorMode = S;
 					SetMotor (motor_fwd, m2);
-					SetMotor (motor_fwd, m3);
 					SetMotor (motor_fwd, m4);
+					for (int j = 0; j < 100 ; j++)
+					{
+						HandleDriverInputs ();
+						Wait (0.01);
+					}
+					SetMotor (motor_fwd, m3);
 					m_shootRequested = false;
 				}
 				else if	((1 == m_ballCount) &&
@@ -1416,8 +1426,13 @@ class Robot2012 : public SimpleRobot
 					// I1OOOO -> W0OOFF
 					m_collectorMode = W;
 					m_ballCount = 0;
-					SetMotor (motor_fwd, m3);
 					SetMotor (motor_fwd, m4);
+					for (int j = 0; j < 100 ; j++)
+					{
+						HandleDriverInputs ();
+						Wait (0.01);
+					}
+					SetMotor (motor_fwd, m3);
 					ballCollectorTimer->Start();
 					m_shootRequested = false;
 				}
