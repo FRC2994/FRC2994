@@ -241,7 +241,7 @@ const step_speed m_autoTurnBridge[NUM_START_POSITION] =
 };
 
 const DriverStationLCD::Line ballCollectorDebugLine = DriverStationLCD::kUser_Line6;
-const double SHOOTER_TIMEOUT = 1.0;
+const double SHOOTER_TIMEOUT = 2.0;
 #define SHOOTER_TEST_INCREMENT 0.025
 
 // Camera servo constants
@@ -1270,6 +1270,7 @@ class Robot2012 : public SimpleRobot
 				{
 					// I2FFOO -> I3OOOO
 					m_ballCount = 3;
+					m_shootRequested = false;
 					SetMotor (motor_off, m1);
 					SetMotor (motor_off, m2);
 				}
@@ -1298,6 +1299,7 @@ class Robot2012 : public SimpleRobot
 			{
 				// C1FFFO -> I1FFOO
 				m_collectorMode = I;
+				m_shootRequested = false;
 				SetMotor (motor_off, m3);
 			}
 			PrintState(3, false);
@@ -1316,6 +1318,7 @@ class Robot2012 : public SimpleRobot
 				{
 					// C2FFFO -> I2FFOO
 					m_collectorMode = I;
+					m_shootRequested = false;
 					SetMotor (motor_off, m3);
 				}
 				else if ((S == m_collectorMode) &&
@@ -1327,6 +1330,7 @@ class Robot2012 : public SimpleRobot
 					// S3OFFF -> I2FFOO
 					m_collectorMode = I;
 					m_ballCount = 2;
+					m_shootRequested = false;
 					SetMotor (motor_fwd, m1);
 					SetMotor (motor_off, m3);
 					SetMotor (motor_off, m4);
@@ -1340,6 +1344,7 @@ class Robot2012 : public SimpleRobot
 					// S2OOFF -> I1OOOO
 					m_collectorMode = I;
 					m_ballCount = 1;
+					m_shootRequested = false;
 					SetMotor (motor_off, m3);
 					SetMotor (motor_off, m4);
 				}
@@ -1352,7 +1357,15 @@ class Robot2012 : public SimpleRobot
 					// S1OOFO -> W0OOFF
 					m_collectorMode = W;
 					m_ballCount = 0;
-					SetMotor (motor_fwd, m4);
+					// will start m4 when the shoot button is pressed (I1FFOO -> S1OOFO)
+					//SetMotor (motor_fwd, m4);
+					//for (int j = 0; j < 100 ; j++)
+					//{
+					//	HandleDriverInputs ();
+					//	Wait (0.01);
+					//}
+					ballCollectorTimer->Start(); 
+
 				}
 				else if ((C == m_collectorMode) &&
 					(3 == m_ballCount) &&
@@ -1384,6 +1397,7 @@ class Robot2012 : public SimpleRobot
 					SetMotor (motor_off, m1);
 					SetMotor (motor_off, m2);
 					SetMotor (motor_fwd, m3);
+					SetMotor (motor_fwd, m4); // done here to give motor time to spin up
 					m_shootRequested = false;
 				}
 				else if	((2 == m_ballCount) &&
@@ -1409,7 +1423,6 @@ class Robot2012 : public SimpleRobot
 				{
 					// I3OOOO -> S3OFFF
 					m_collectorMode = S;
-					SetMotor (motor_fwd, m2);
 					SetMotor (motor_fwd, m4);
 					for (int j = 0; j < 100 ; j++)
 					{
@@ -1417,6 +1430,7 @@ class Robot2012 : public SimpleRobot
 						Wait (0.01);
 					}
 					SetMotor (motor_fwd, m3);
+					SetMotor (motor_fwd, m2);
 					m_shootRequested = false;
 				}
 				else if	((1 == m_ballCount) &&
@@ -1474,6 +1488,7 @@ class Robot2012 : public SimpleRobot
 				// I0OOOO -> I0FFOO
 				SetMotor (motor_fwd, m1);
 				SetMotor (motor_fwd, m2);
+				m_shootRequested = false;
 			}
 			else 
 			{
@@ -1484,6 +1499,7 @@ class Robot2012 : public SimpleRobot
 				SetMotor (motor_off, m2);
 				SetMotor (motor_off, m3);
 				SetMotor (motor_off, m4);
+				m_shootRequested = false;
 			}
 			PrintState(7, false);
 		}
@@ -1494,6 +1510,7 @@ class Robot2012 : public SimpleRobot
 			// XXXXXX -> F0RRRO
 			m_collectorMode = F;
 			m_ballCount = 0;
+			m_shootRequested = false;
 			SetMotor (motor_rev, m1);
 			SetMotor (motor_rev, m2);
 			SetMotor (motor_rev, m3);
@@ -1782,7 +1799,7 @@ class Robot2012 : public SimpleRobot
 					// S1 S1Omotor_off -> W0Omotor_off
 					m_collectorMode = W;
 					m_ballCount--;
-					ballCollectorTimer->Start();
+					//ballCollectorTimer->Start();
 				}
 				else if (2 == m_ballCount)
 				{
@@ -1972,6 +1989,7 @@ class Robot2012 : public SimpleRobot
 				SetMotor (motor_fwd, m2);
 				SetMotor (motor_off, m3);
 				SetMotor (motor_off, m4);
+				m_shootRequested = false;
 			}
 			else
 			{
@@ -1982,6 +2000,7 @@ class Robot2012 : public SimpleRobot
 				SetMotor (motor_off, m2);
 				SetMotor (motor_off, m3);
 				SetMotor (motor_off, m4);
+				m_shootRequested = false;
 			}
 			PrintState(7, false);
 		}
