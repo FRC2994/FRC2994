@@ -242,6 +242,7 @@ const step_speed m_autoTurnBridge[NUM_START_POSITION] =
 
 const DriverStationLCD::Line ballCollectorDebugLine = DriverStationLCD::kUser_Line6;
 const double SHOOTER_TIMEOUT = 2.0;
+const double SHOOTER_SPIN_TIMEOUT = 2.0;
 #define SHOOTER_TEST_INCREMENT 0.025
 
 // Camera servo constants
@@ -302,7 +303,8 @@ class Robot2012 : public SimpleRobot
 	DashboardDataFormat *dds;
 	DriverStationLCD 	*dsLCD;
 	DriverStation 		*ds;
-	Timer 				*ballCollectorTimer;
+	Timer 				*ballCollectorFeedTimer;
+	Timer 				*ballCollectorSpinTimer;
 	Timer				*cameraTimer;
 
 	// Ball collector Motors
@@ -452,7 +454,8 @@ class Robot2012 : public SimpleRobot
 		ballCollectorM1 = new Relay(BALL_COLLECTOR_FRONT);
 		ballCollectorM2 = new Relay(BALL_COLLECTOR_MIDDLE);
 		ballCollectorM3 = new Relay(BALL_COLLECTOR_VERTICAL);
-		ballCollectorTimer = new Timer();
+		ballCollectorFeedTimer = new Timer();
+		ballCollectorSpinTimer = new Timer();
 
 		m_shooterBottomScaleFactor 	= 1;
 		m_shooterTopScaleFactor 	= 1;
@@ -479,7 +482,7 @@ class Robot2012 : public SimpleRobot
 		rightShifter->SetAngle(SHIFTER_HIGH_GEAR);
 
 		m_debug = false;
-		dsLCD->PrintfLine(DriverStationLCD::kUser_Line1, "Mar8 " __TIME__);
+		dsLCD->PrintfLine(DriverStationLCD::kUser_Line1, "Apr18 " __TIME__);
 		dsLCD->UpdateLCD();
 		robotDrive = new RobotDrive(driveLeftMotor, driveRightMotor);
 		robotDrive->SetExpiration(0.5);
@@ -1137,13 +1140,13 @@ class Robot2012 : public SimpleRobot
 				m_ballCount = 0;
 				SetMotor (motor_fwd, m3);
 				SetMotor (motor_fwd, m4);
-				ballCollectorTimer->Start();
+				ballCollectorFeedTimer->Start();
 				m_shootRequested = false;
 			}
 			PrintState(5, false);
 		}
 		
-		if (true == ballCollectorTimer->HasPeriodPassed(SHOOTER_TIMEOUT)) // switch 6
+		if (true == ballCollectorFeedTimer->HasPeriodPassed(SHOOTER_TIMEOUT)) // switch 6
 		{
 			PrintState(6, true);
 			if ((0 == m_ballCount) &&
@@ -1156,7 +1159,7 @@ class Robot2012 : public SimpleRobot
 				SetMotor (motor_fwd, m1);
 				SetMotor (motor_fwd, m2);
 				SetMotor (motor_off, m4);
-				ballCollectorTimer->Stop();
+				ballCollectorFeedTimer->Stop();
 			}
 			PrintState(6, false);
 		}
@@ -1364,7 +1367,7 @@ class Robot2012 : public SimpleRobot
 					//	HandleDriverInputs ();
 					//	Wait (0.01);
 					//}
-					ballCollectorTimer->Start(); 
+					ballCollectorFeedTimer->Start(); 
 
 				}
 				else if ((C == m_collectorMode) &&
@@ -1447,14 +1450,14 @@ class Robot2012 : public SimpleRobot
 						Wait (0.01);
 					}
 					SetMotor (motor_fwd, m3);
-					ballCollectorTimer->Start();
+					ballCollectorFeedTimer->Start();
 					m_shootRequested = false;
 				}
 			}
 			PrintState(5, false);
 		}
 		
-		if (true == ballCollectorTimer->HasPeriodPassed(SHOOTER_TIMEOUT)) // switch 6
+		if (true == ballCollectorFeedTimer->HasPeriodPassed(SHOOTER_TIMEOUT)) // switch 6
 		{
 			PrintState(6, true);
 			if ((W == m_collectorMode) &&
@@ -1470,7 +1473,7 @@ class Robot2012 : public SimpleRobot
 				SetMotor (motor_fwd, m2);
 				SetMotor (motor_off, m3);
 				SetMotor (motor_off, m4);
-				ballCollectorTimer->Stop();
+				ballCollectorFeedTimer->Stop();
 			}
 			PrintState(6, false);
 		}
@@ -1532,6 +1535,325 @@ class Robot2012 : public SimpleRobot
 		}
 	}
 	
+	//----------------------------------------------------------------------------//
+	//
+	//----------------------------------------------------------------------------//
+		
+		void RunBallCollectorStateMachine_3switchNew(void)
+		{
+			if (pressed == CollectorSwitchEvent(s2)) // switch 2
+			{
+				PrintState(2, true);
+				if ((motor_fwd == GetMotor(m1)) &&
+					(motor_fwd == GetMotor(m2)) &&
+					(motor_off == GetMotor(m4)))
+				{
+					if ((I == m_collectorMode) &&
+						(0 == m_ballCount) &&
+						(motor_off == GetMotor(m3)))
+					{
+						// I0FFOO -> C1FFFO	
+						m_collectorMode = C;
+						m_ballCount = 1;
+						SetMotor (motor_fwd, m3);
+
+					}
+					else if ((I == m_collectorMode) &&
+							(1 == m_ballCount) &&
+							(motor_off == GetMotor(m3)))
+					{
+						// I1FFOO -> C2FFFO
+						m_collectorMode = C;
+						m_ballCount = 2;
+						SetMotor (motor_fwd, m3);
+
+					}
+					else if ((C == m_collectorMode) &&
+							(1 == m_ballCount) &&
+							(motor_fwd == GetMotor(m3)))
+					{	
+						// C1FFFO -> C2FFFO
+						m_ballCount = 2;
+					}
+					else if ((I == m_collectorMode) &&
+							(2 == m_ballCount) &&
+							(motor_off == GetMotor(m3)))
+					{
+						// I2FFOO -> I3OOOO
+						m_ballCount = 3;
+						m_shootRequested = false;
+						SetMotor (motor_off, m1);
+						SetMotor (motor_off, m2);
+					}
+					else if ((C == m_collectorMode) &&
+							(2 == m_ballCount) &&
+							(motor_fwd == GetMotor(m3)))
+					{
+						// C2FFFO -> C3OOFO
+						m_ballCount = 3;
+						SetMotor (motor_off, m1);
+						SetMotor (motor_off, m2);
+					}
+				}
+				PrintState(2, false);
+			}
+			
+			if (pressed == CollectorSwitchEvent(s3)) // switch 3
+			{
+				PrintState(3, true);
+				if ((C == m_collectorMode) &&
+					(1 == m_ballCount) &&
+					(motor_fwd == GetMotor(m1)) &&
+					(motor_fwd == GetMotor(m2)) &&
+					(motor_fwd == GetMotor(m3)) &&
+					(motor_off == GetMotor(m4)))
+				{
+					// C1FFFO -> I1FFOO
+					m_collectorMode = I;
+					m_shootRequested = false;
+					SetMotor (motor_off, m3);
+				}
+				PrintState(3, false);
+			}
+			
+			if (pressed == CollectorSwitchEvent(s4)) // switch 4
+			{
+				PrintState(4, true);
+				if ((motor_fwd == GetMotor(m3)))
+				{
+					if ((C == m_collectorMode) &&
+						(2 == m_ballCount) &&
+						(motor_fwd == GetMotor(m1)) &&
+						(motor_fwd == GetMotor(m2)) &&
+						(motor_off == GetMotor(m4)))
+					{
+						// C2FFFO -> I2FFOO
+						m_collectorMode = I;
+						m_shootRequested = false;
+						SetMotor (motor_off, m3);
+					}
+					else if ((S == m_collectorMode) &&
+						(3 == m_ballCount) &&
+						(motor_off == GetMotor(m1)) &&
+						(motor_fwd == GetMotor(m2)) &&
+						(motor_fwd == GetMotor(m4)))
+					{
+						// S3OFFF -> I2FFOO
+						m_collectorMode = I;
+						m_ballCount = 2;
+						m_shootRequested = false;
+						SetMotor (motor_fwd, m1);
+						SetMotor (motor_off, m3);
+						SetMotor (motor_off, m4);
+					}
+					else if ((S == m_collectorMode) &&
+						(2 == m_ballCount) &&
+						(motor_off == GetMotor(m1)) &&
+						(motor_off == GetMotor(m2)) &&
+						(motor_fwd == GetMotor(m4)))
+					{
+						// S2OOFF -> I1OOOO
+						m_collectorMode = I;
+						m_ballCount = 1;
+						m_shootRequested = false;
+						SetMotor (motor_off, m3);
+						SetMotor (motor_off, m4);
+					}
+					else if ((C == m_collectorMode) &&
+						(1 == m_ballCount) &&
+						(motor_off == GetMotor(m1)) &&
+						(motor_off == GetMotor(m2)) &&
+						(motor_off == GetMotor(m4)))
+					{
+						// C1OOFO -> W1OOOF
+						m_collectorMode = W;
+						SetMotor (motor_off, m3);
+						SetMotor (motor_fwd, m4);
+						ballCollectorSpinTimer->Start(); 
+
+					}
+					else if ((C == m_collectorMode) &&
+						(3 == m_ballCount) &&
+						(motor_off == GetMotor(m1)) &&
+						(motor_off == GetMotor(m2)) &&
+						(motor_off == GetMotor(m4)))
+					{
+						// C3OOFO -> I3OOOO
+						m_collectorMode = I;
+						SetMotor (motor_off, m3);
+					}
+				}
+				PrintState(4, true);
+			}
+			
+			if (m_shootDataReady && m_shootRequested) // switch 5
+			{
+				PrintState(5, true);
+				if ((I == m_collectorMode) &&
+					(motor_off == GetMotor(m3)) &&
+					(motor_off == GetMotor(m4)))
+				{
+					if	((1 == m_ballCount) &&
+						 (motor_fwd == GetMotor(m1)) &&
+						 (motor_fwd == GetMotor(m2)))
+					{
+						// I1FFOO -> C1OOFO
+						m_collectorMode = C;
+						SetMotor (motor_off, m1);
+						SetMotor (motor_off, m2);
+						SetMotor (motor_fwd, m3);
+						m_shootRequested = false;
+					}
+					else if	((2 == m_ballCount) &&
+						 (motor_fwd == GetMotor(m1)) &&
+						 (motor_fwd == GetMotor(m2)))
+					{
+						// I2FFOO -> W2OOOF
+						m_collectorMode = W;
+						SetMotor (motor_off, m1);
+						SetMotor (motor_off, m2);
+						SetMotor (motor_fwd, m4);
+						m_shootRequested = false;
+						ballCollectorSpinTimer->Start();
+					}
+					else if	((3 == m_ballCount) &&
+						 (motor_off == GetMotor(m1)) &&
+						 (motor_off == GetMotor(m2)))
+					{
+						// I3OOOO -> W3OOOF
+						m_collectorMode = W;
+						SetMotor (motor_fwd, m4);
+						m_shootRequested = false;
+						ballCollectorSpinTimer->Start();
+					}
+					else if	((1 == m_ballCount) &&
+						 (motor_off == GetMotor(m1)) &&
+						 (motor_off == GetMotor(m2)))
+					{
+						// I1OOOO -> W1OOOF
+						m_collectorMode = W;
+						SetMotor (motor_fwd, m4);
+						ballCollectorSpinTimer->Start();
+						m_shootRequested = false;
+					}
+				}
+				PrintState(5, false);
+			}
+			
+			if (true == ballCollectorFeedTimer->HasPeriodPassed(SHOOTER_TIMEOUT)) // switch 6
+			{
+				PrintState(6, true);
+				if ((W == m_collectorMode) &&
+					(1 == m_ballCount) &&
+					(motor_off == GetMotor(m1)) &&
+					(motor_off == GetMotor(m2)) &&
+					(motor_fwd == GetMotor(m3)) &&
+					(motor_fwd == GetMotor(m4)))
+				{
+					// W1OOFF -> I0FFOO
+					m_collectorMode = I;
+					m_ballCount = 0;
+					SetMotor (motor_fwd, m1);
+					SetMotor (motor_fwd, m2);
+					SetMotor (motor_off, m3);
+					SetMotor (motor_off, m4);
+					ballCollectorFeedTimer->Stop();
+				}
+				PrintState(6, false);
+			}
+			if (true == ballCollectorSpinTimer->HasPeriodPassed(SHOOTER_SPIN_TIMEOUT)) // switch 9
+			{
+				PrintState(9, true);
+				if ((W == m_collectorMode) &&
+					(motor_off == GetMotor(m1)) &&
+					(motor_off == GetMotor(m2)) &&
+					(motor_off == GetMotor(m3)) &&
+					(motor_fwd == GetMotor(m4)))
+				{
+					switch (m_ballCount)
+					{
+						case 3:
+							// W3OOOF -> S3OFFF
+							m_collectorMode = S;
+							SetMotor (motor_fwd, m2);
+							SetMotor (motor_fwd, m3);
+							break;
+						case 2:
+							// W2OOOF -> S2OOFF
+							m_collectorMode = S;
+							SetMotor (motor_fwd, m3);
+							break;
+						case 1:
+							// W1OOOF -> W1OOFF
+							SetMotor (motor_fwd, m3);
+							ballCollectorFeedTimer->Start();
+							break;
+						default:
+							// do nothing
+							break;
+					}
+					ballCollectorSpinTimer->Stop();
+				}
+				PrintState(9, false);
+			}
+			
+			if (pressed == GamepadButtonEvent(enable)) // switch 7
+			{
+				PrintState(7, true);
+				if ((I == m_collectorMode) &&
+					(0 == m_ballCount) &&
+					(motor_off == GetMotor(m1)) &&
+					(motor_off == GetMotor(m2)) &&
+					(motor_off == GetMotor(m3)) &&
+					(motor_off == GetMotor(m4)))
+				{
+					// I0OOOO -> I0FFOO
+					SetMotor (motor_fwd, m1);
+					SetMotor (motor_fwd, m2);
+					m_shootRequested = false;
+				}
+				else 
+				{
+					// !I0OOOO -> I0OOOO
+					m_collectorMode = I;
+					m_ballCount = 0;
+					SetMotor (motor_off, m1);
+					SetMotor (motor_off, m2);
+					SetMotor (motor_off, m3);
+					SetMotor (motor_off, m4);
+					m_shootRequested = false;
+				}
+				PrintState(7, false);
+			}
+			
+			if (pressed == GamepadButtonEvent(flush)) // switch 8
+			{
+				PrintState(8, true);
+				// XXXXXX -> F0RRRO
+				m_collectorMode = F;
+				m_ballCount = 0;
+				m_shootRequested = false;
+				SetMotor (motor_rev, m1);
+				SetMotor (motor_rev, m2);
+				SetMotor (motor_rev, m3);
+				SetMotor (motor_off, m4);
+				PrintState(8, false);
+			}
+
+			if(released == GamepadButtonEvent(flush))
+			{
+				PrintState(8, true);
+				// XXXXXX -> I0OOOO
+				m_collectorMode = I;
+				m_ballCount = 0;
+				SetMotor (motor_off, m1);
+				SetMotor (motor_off, m2);
+				SetMotor (motor_off, m3);
+				SetMotor (motor_off, m4);
+				PrintState(8, false);
+			}
+		}
+
 //----------------------------------------------------------------------------//
 //
 //----------------------------------------------------------------------------//
@@ -1799,7 +2121,7 @@ class Robot2012 : public SimpleRobot
 					// S1 S1Omotor_off -> W0Omotor_off
 					m_collectorMode = W;
 					m_ballCount--;
-					//ballCollectorTimer->Start();
+					//ballCollectorFeedTimer->Start();
 				}
 				else if (2 == m_ballCount)
 				{
@@ -1894,7 +2216,7 @@ class Robot2012 : public SimpleRobot
 							SetMotor (motor_fwd, m4);
 							SetMotor (motor_fwd, m3);
 							m_ballCount--;
-							ballCollectorTimer->Start();
+							ballCollectorFeedTimer->Start();
 							m_shootRequested = false;
 						}
 						else
@@ -1946,7 +2268,7 @@ class Robot2012 : public SimpleRobot
 			PrintState(5, false);
 		}
 
-		if (true == ballCollectorTimer->HasPeriodPassed(SHOOTER_TIMEOUT)) // switch 6
+		if (true == ballCollectorFeedTimer->HasPeriodPassed(SHOOTER_TIMEOUT)) // switch 6
 		{
 			PrintState(6, true);
 			if ((W == m_collectorMode) &&
@@ -1964,7 +2286,7 @@ class Robot2012 : public SimpleRobot
 				SetMotor (motor_off, m4);
 // TODO: read shooter motor RPMs, compare to desired values and recompute a scaling factor
 // to use in the next shot
-				ballCollectorTimer->Stop();
+				ballCollectorFeedTimer->Stop();
 			}
 			else
 			{
@@ -2294,7 +2616,7 @@ class Robot2012 : public SimpleRobot
 			{
 				//RunBallCollectorStateMachine();
 				//RunBallCollectorStateMachine_1switch();
-				RunBallCollectorStateMachine_3switch();
+				RunBallCollectorStateMachine_3switchNew();
 			}
 
 			// Display the number of balls we are carrying on an display
